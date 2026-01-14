@@ -2,15 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Search, ShoppingBag, Store, Percent, Tag, Mail, Phone, LogIn, UserPlus, MessageCircle } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 
-// --- CONEXIÓN SEGURA ---
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-// Verificación de seguridad: Si no hay llaves, no intentamos conectar para evitar la pantalla blanca
-const supabase = (supabaseUrl && supabaseKey) 
-    ? createClient(supabaseUrl, supabaseKey)
-    : null;
-
 const App: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [filtroActivo, setFiltroActivo] = useState<'todos' | 'descuento' | 'garage'>('todos');
@@ -18,33 +9,44 @@ const App: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [errorMsg, setErrorMsg] = useState('');
 
+    // --- CONEXIÓN SEGURA DENTRO DEL EFECTO ---
     useEffect(() => {
-        const fetchProductos = async () => {
-            // Si la conexión falló, mostramos un mensaje amigable en pantalla
-            if (!supabase) {
-                setErrorMsg("Faltan las credenciales. Revisa las variables en Netlify.");
+        const iniciarBazar = async () => {
+            setLoading(true);
+            
+            // 1. Leemos las llaves aquí mismo
+            const url = import.meta.env.VITE_SUPABASE_URL;
+            const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+            // 2. Si faltan, mostramos aviso (pero la web NO se cae)
+            if (!url || !key) {
+                console.error("Faltan llaves en Netlify");
+                setErrorMsg("Falta configurar la conexión a la base de datos.");
                 setLoading(false);
                 return;
             }
 
-            setLoading(true);
             try {
+                // 3. Intentamos conectar
+                const supabase = createClient(url, key);
                 const { data, error } = await supabase.from('productos').select('*');
+                
                 if (error) throw error;
                 setProductos(data || []);
             } catch (err: any) {
-                console.error("Error al cargar:", err);
-                setErrorMsg("No se pudieron cargar los productos.");
+                console.error("Error de conexión:", err);
+                // Si la tabla no existe o la conexión falla, mostramos esto:
+                setErrorMsg("No se pudo conectar con el catálogo.");
             }
             setLoading(false);
         };
 
-        fetchProductos();
+        iniciarBazar();
     }, []);
 
     // Filtros
     const productosVisibles = productos.filter(p => {
-        const coincideBusqueda = p.nombre.toLowerCase().includes(searchTerm.toLowerCase());
+        const coincideBusqueda = p.nombre ? p.nombre.toLowerCase().includes(searchTerm.toLowerCase()) : false;
         let coincideBoton = true;
         if (filtroActivo === 'descuento') coincideBoton = p.descuento === true;
         if (filtroActivo === 'garage') coincideBoton = p.categoria === 'garage';
@@ -138,11 +140,14 @@ const App: React.FC = () => {
                         {filtroActivo === 'todos' ? 'Catálogo Completo' : `Mostrando: ${filtroActivo}`}
                     </h2>
                     
-                    {/* AQUI SE MOSTRARÁ EL ERROR SI FALTA ALGO, EN LUGAR DE PANTALLA BLANCA */}
+                    {/* MENSAJE DE ERROR AMIGABLE SI FALLA ALGO */}
                     {errorMsg && (
-                        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mt-4 max-w-lg mx-auto">
-                            <p className="font-bold">Estado de Conexión:</p>
-                            <p>{errorMsg}</p>
+                        <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-6 py-4 rounded-xl mt-4 max-w-lg mx-auto shadow-sm">
+                            <p className="font-bold flex items-center justify-center gap-2">
+                                <Store className="w-5 h-5"/>
+                                Estado del Sistema:
+                            </p>
+                            <p className="mt-1">{errorMsg}</p>
                         </div>
                     )}
 
