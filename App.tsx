@@ -1,20 +1,21 @@
 import React, { useState } from 'react';
-import { Search, ShoppingBag, User, Store, Percent, Tag, Mail, Phone, LogIn, UserPlus } from 'lucide-react';
+import { Search, ShoppingBag, User, Store, Percent, Tag, Mail, Phone, LogIn, UserPlus, MessageCircle } from 'lucide-react';
 
 const App: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [filtroActivo, setFiltroActivo] = useState<'todos' | 'descuento' | 'garage'>('todos');
 
     return (
-        <div className="min-h-screen bg-gray-100 font-sans flex flex-col">
+        <div className="min-h-screen bg-gray-100 font-sans flex flex-col relative">
             <style>{`
                 .hero-gradient { background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%); }
+                .antü-gold { background: #b19149; }
+                .antü-gold:hover { background: #967a3d; }
             `}</style>
 
-            {/* HEADER MEJORADO - PC Y MÓVIL */}
+            {/* HEADER CON ACCESO */}
             <header className="bg-white shadow-md sticky top-0 z-50">
                 <div className="container mx-auto px-4 py-3 flex items-center justify-between gap-2">
-                    {/* LOGO */}
                     <div className="flex items-center gap-2 cursor-pointer shrink-0" onClick={() => setFiltroActivo('todos')}>
                         <img 
                             src="/logo-bazar.png" 
@@ -30,7 +31,6 @@ const App: React.FC = () => {
                         </span>
                     </div>
 
-                    {/* BOTONES DE ACCESO (Visibles en todo tamaño) */}
                     <div className="flex items-center gap-2 md:gap-4">
                         <button className="flex items-center gap-1 text-blue-600 hover:bg-blue-50 px-3 py-2 rounded-lg transition-colors text-sm font-bold border border-blue-100">
                             <LogIn className="w-4 h-4" />
@@ -54,7 +54,6 @@ const App: React.FC = () => {
                         Conectando Pymes y Microempresas contigo, a un solo click.
                     </p>
                     
-                    {/* BUSCADOR */}
                     <div className="max-w-xl mx-auto relative group mb-10">
                         <Search className="absolute left-4 top-4 text-gray-400 w-6 h-6 group-focus-within:text-blue-500 transition-colors" />
                         <input
@@ -66,14 +65,11 @@ const App: React.FC = () => {
                         />
                     </div>
 
-                    {/* BOTONES CON VIDA */}
                     <div className="flex flex-wrap justify-center gap-4">
                         <button 
                             onClick={() => setFiltroActivo(filtroActivo === 'descuento' ? 'todos' : 'descuento')}
                             className={`flex items-center gap-2 font-bold py-3 px-8 rounded-xl transition-all shadow-lg transform hover:scale-105 ${
-                                filtroActivo === 'descuento' 
-                                ? 'bg-white text-green-600 ring-4 ring-green-400' 
-                                : 'bg-green-500 text-white'
+                                filtroActivo === 'descuento' ? 'bg-white text-green-600 ring-4 ring-green-400' : 'bg-green-500 text-white'
                             }`}
                         >
                             <Percent className="w-5 h-5" />
@@ -83,9 +79,7 @@ const App: React.FC = () => {
                         <button 
                             onClick={() => setFiltroActivo(filtroActivo === 'garage' ? 'todos' : 'garage')}
                             className={`flex items-center gap-2 font-bold py-3 px-8 rounded-xl transition-all shadow-lg transform hover:scale-105 ${
-                                filtroActivo === 'garage' 
-                                ? 'bg-white text-orange-600 ring-4 ring-orange-400' 
-                                : 'bg-orange-500 text-white'
+                                filtroActivo === 'garage' ? 'bg-white text-orange-600 ring-4 ring-orange-400' : 'bg-orange-500 text-white'
                             }`}
                         >
                             <Tag className="w-5 h-5" />
@@ -109,6 +103,17 @@ const App: React.FC = () => {
                     ))}
                 </div>
             </main>
+
+            {/* BOTÓN FLOTANTE CHAT CON ANTÜ */}
+            <button 
+                className="fixed bottom-6 right-6 antü-gold text-white p-4 rounded-full shadow-2xl hover:scale-110 transition-all flex items-center gap-3 z-50 group"
+                onClick={() => alert('Conectando con Antü...')}
+            >
+                <MessageCircle className="w-6 h-6" />
+                <span className="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-500 font-bold whitespace-nowrap">
+                    Chat con Antü
+                </span>
+            </button>
 
             <footer className="bg-[#2D3748] text-gray-400 mt-12">
                 <div className="container mx-auto py-8 px-4">
