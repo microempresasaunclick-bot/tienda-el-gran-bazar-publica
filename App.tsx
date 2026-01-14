@@ -10,14 +10,21 @@ const App: React.FC = () => {
                 .hero-gradient { background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%); }
             `}</style>
 
-            {/* HEADER */}
+            {/* HEADER CON LOGO RESTAURADO */}
             <header className="bg-white shadow-sm sticky top-0 z-50">
                 <div className="container mx-auto px-4 py-2 flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <img 
-                            src="/logo-bazar.png" 
+                            src="/public/logo-bazar.png" 
                             alt="Logo El Gran Bazar" 
-                            className="h-10 md:h-12 w-auto object-contain" 
+                            className="h-10 md:h-12 w-auto object-contain"
+                            onError={(e) => {
+                                // Si no está en /public/logo-bazar.png, lo busca en la raíz
+                                const target = e.target as HTMLImageElement;
+                                if (target.src.includes('/public/')) {
+                                    target.src = '/logo-bazar.png';
+                                }
+                            }}
                         />
                         <span className="text-lg md:text-xl font-bold text-gray-800 tracking-tight uppercase">
                             El Gran Bazar
@@ -74,7 +81,7 @@ const App: React.FC = () => {
                 </div>
             </main>
 
-            {/* FOOTER */}
+            {/* FOOTER PROFESIONAL */}
             <footer className="bg-[#2D3748] text-gray-400 mt-12">
                 <div className="container mx-auto py-8 px-4">
                     <div className="text-center text-sm border-b border-gray-700 pb-6">
