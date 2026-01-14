@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import { Search, ShoppingBag, User, Store, Percent, Tag, Mail, Phone } from 'lucide-react';
+import { Search, ShoppingBag, User, Store, Percent, Tag, Mail, Phone, LogIn, UserPlus } from 'lucide-react';
 
 const App: React.FC = () => {
-    // 1. ESTADOS PARA LA LÓGICA DE FILTRADO
     const [searchTerm, setSearchTerm] = useState('');
     const [filtroActivo, setFiltroActivo] = useState<'todos' | 'descuento' | 'garage'>('todos');
 
@@ -12,25 +11,35 @@ const App: React.FC = () => {
                 .hero-gradient { background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%); }
             `}</style>
 
-            {/* HEADER */}
-            <header className="bg-white shadow-sm sticky top-0 z-50">
-                <div className="container mx-auto px-4 py-2 flex items-center justify-between">
-                    <div className="flex items-center gap-3 cursor-pointer" onClick={() => setFiltroActivo('todos')}>
+            {/* HEADER MEJORADO - PC Y MÓVIL */}
+            <header className="bg-white shadow-md sticky top-0 z-50">
+                <div className="container mx-auto px-4 py-3 flex items-center justify-between gap-2">
+                    {/* LOGO */}
+                    <div className="flex items-center gap-2 cursor-pointer shrink-0" onClick={() => setFiltroActivo('todos')}>
                         <img 
                             src="/logo-bazar.png" 
-                            alt="Logo El Gran Bazar" 
-                            className="h-10 md:h-12 w-auto object-contain"
+                            alt="Logo" 
+                            className="h-8 md:h-12 w-auto object-contain"
                             onError={(e) => {
                                 const target = e.target as HTMLImageElement;
                                 if (target.src.includes('/public/')) target.src = '/logo-bazar.png';
                             }}
                         />
-                        <span className="text-lg md:text-xl font-bold text-gray-800 tracking-tight uppercase">
+                        <span className="hidden sm:inline text-lg font-bold text-gray-800 tracking-tight uppercase">
                             El Gran Bazar
                         </span>
                     </div>
-                    <div className="flex items-center gap-4">
-                        <User className="text-gray-600 w-6 h-6 cursor-pointer hover:text-blue-600 transition-colors" />
+
+                    {/* BOTONES DE ACCESO (Visibles en todo tamaño) */}
+                    <div className="flex items-center gap-2 md:gap-4">
+                        <button className="flex items-center gap-1 text-blue-600 hover:bg-blue-50 px-3 py-2 rounded-lg transition-colors text-sm font-bold border border-blue-100">
+                            <LogIn className="w-4 h-4" />
+                            <span>Entrar</span>
+                        </button>
+                        <button className="flex items-center gap-1 bg-blue-600 text-white hover:bg-blue-700 px-3 py-2 rounded-lg transition-all text-sm font-bold shadow-sm">
+                            <UserPlus className="w-4 h-4" />
+                            <span className="hidden xs:inline">Registrarse</span>
+                        </button>
                     </div>
                 </div>
             </header>
@@ -57,7 +66,7 @@ const App: React.FC = () => {
                         />
                     </div>
 
-                    {/* 2. BOTONES CON VIDA (onClick) */}
+                    {/* BOTONES CON VIDA */}
                     <div className="flex flex-wrap justify-center gap-4">
                         <button 
                             onClick={() => setFiltroActivo(filtroActivo === 'descuento' ? 'todos' : 'descuento')}
@@ -85,27 +94,22 @@ const App: React.FC = () => {
                     </div>
                 </div>
 
-                {/* 3. TÍTULO DINÁMICO SEGÚN EL BOTÓN PRESIONADO */}
                 <div className="text-center mb-8">
                     <h2 className="text-2xl font-bold text-gray-800 capitalize">
-                        {filtroActivo === 'todos' ? 'Todos los Productos' : `Mostrando: ${filtroActivo}`}
+                        {filtroActivo === 'todos' ? 'Catálogo de Pymes' : `Mostrando: ${filtroActivo}`}
                     </h2>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
                     {[1, 2, 3].map((i) => (
-                        <div key={i} className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 text-center hover:shadow-md transition-shadow">
+                        <div key={i} className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
                             <Store className="w-16 h-16 text-blue-500 mx-auto mb-4 opacity-20" />
-                            <h3 className="text-xl font-bold text-gray-800 mb-2">
-                                {filtroActivo === 'todos' ? 'Producto Pyme' : `Oferta ${filtroActivo}`}
-                            </h3>
-                            <p className="text-gray-500">Pronto podrás ver aquí los productos reales.</p>
+                            <h3 className="text-xl font-bold text-gray-800">Pronto Productos Reales</h3>
                         </div>
                     ))}
                 </div>
             </main>
 
-            {/* FOOTER */}
             <footer className="bg-[#2D3748] text-gray-400 mt-12">
                 <div className="container mx-auto py-8 px-4">
                     <div className="text-center text-sm border-b border-gray-700 pb-6">
