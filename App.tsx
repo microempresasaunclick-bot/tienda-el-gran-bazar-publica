@@ -6,10 +6,9 @@ const App: React.FC = () => {
 
     return (
         <div className="min-h-screen bg-gray-100 font-sans">
-            {/* Estilos embebidos para asegurar el diseño azul */}
+            {/* Estilos internos para asegurar el diseño azul profesional */}
             <style>{`
                 .hero-gradient { background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%); }
-                .search-shadow { box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06); }
             `}</style>
 
             {/* HEADER */}
@@ -26,13 +25,13 @@ const App: React.FC = () => {
             </header>
 
             <main className="container mx-auto px-4 py-8">
-                {/* HERO SECTION AZUL PROFESIONAL */}
+                {/* HERO SECTION CON EL NUEVO TEXTO DE PYMES */}
                 <div className="hero-gradient text-center p-8 md:p-16 text-white rounded-3xl shadow-2xl mb-12">
                     <h1 className="text-4xl md:text-6xl font-black mb-6 leading-tight">
                         Bienvenido a <br/> El Gran Bazar
                     </h1>
                     <p className="text-lg md:text-xl text-blue-100 mb-10 max-w-2xl mx-auto font-medium">
-                        Conectando microempresas contigo, a un solo click.
+                        Conectando Pymes y Microempresas contigo, a un solo click.
                     </p>
                     
                     <div className="max-w-xl mx-auto relative group">
@@ -58,13 +57,13 @@ const App: React.FC = () => {
                     </div>
                 </div>
 
-                {/* PRODUCTOS (VISTA PREVIA) */}
+                {/* VISTA PREVIA DE PRODUCTOS */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                     {[1, 2, 3].map((i) => (
                         <div key={i} className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 text-center hover:shadow-md transition-shadow">
                             <Store className="w-16 h-16 text-blue-500 mx-auto mb-4 opacity-20" />
                             <h3 className="text-xl font-bold text-gray-800 mb-2">Cargando Catálogo...</h3>
-                            <p className="text-gray-500">Estamos sincronizando los productos de las microempresas.</p>
+                            <p className="text-gray-500">Sincronizando productos de Pymes locales.</p>
                         </div>
                     ))}
                 </div>
