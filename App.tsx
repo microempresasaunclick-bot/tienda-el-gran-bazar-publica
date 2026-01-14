@@ -10,11 +10,10 @@ const App: React.FC = () => {
                 .hero-gradient { background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%); }
             `}</style>
 
-            {/* HEADER - LOGO AJUSTADO PARA QUE NO SE VEA GRANDE */}
+            {/* HEADER */}
             <header className="bg-white shadow-sm sticky top-0 z-50">
                 <div className="container mx-auto px-4 py-2 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        {/* Tamaño controlado con h-10 (40px) para un look profesional */}
                         <img 
                             src="/logo-bazar.png" 
                             alt="Logo El Gran Bazar" 
@@ -69,4 +68,33 @@ const App: React.FC = () => {
                         <div key={i} className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 text-center">
                             <Store className="w-16 h-16 text-blue-500 mx-auto mb-4 opacity-20" />
                             <h3 className="text-xl font-bold text-gray-800 mb-2">Cargando Catálogo...</h3>
-                            <p className="text-gray-500">Sincronizando productos de Pymes locales.</
+                            <p className="text-gray-500">Sincronizando productos de Pymes locales.</p>
+                        </div>
+                    ))}
+                </div>
+            </main>
+
+            {/* FOOTER */}
+            <footer className="bg-[#2D3748] text-gray-400 mt-12">
+                <div className="container mx-auto py-8 px-4">
+                    <div className="text-center text-sm border-b border-gray-700 pb-6">
+                        <p>&copy; 2025 - {new Date().getFullYear()} El Gran Bazar. Todos los derechos reservados.</p>
+                        <p className="mt-1 font-semibold text-blue-400">Pymes y Microempresas a un Click</p>
+                    </div>
+                    <div className="mt-6 flex justify-center items-center space-x-8 text-sm flex-wrap">
+                        <a href="mailto:microempresasaunclick@gmail.com" className="flex items-center space-x-2 hover:text-white transition-colors my-2">
+                            <Mail className="h-5 w-5 text-blue-400" />
+                            <span>microempresasaunclick@gmail.com</span>
+                        </a>
+                        <a href="tel:+56931761901" className="flex items-center space-x-2 hover:text-white transition-colors my-2">
+                            <Phone className="h-5 w-5 text-green-400" />
+                            <span>+569-31761901 / +569-47436919</span>
+                        </a>
+                    </div>
+                </div>
+            </footer>
+        </div>
+    );
+};
+
+export default App;
