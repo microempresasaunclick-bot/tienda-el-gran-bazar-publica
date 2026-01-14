@@ -2,15 +2,14 @@ import React, { useState } from 'react';
 import { Search, ShoppingBag, User, Store, Percent, Tag, Mail, Phone } from 'lucide-react';
 
 const App: React.FC = () => {
+    // 1. ESTADOS PARA LA LÓGICA DE FILTRADO
     const [searchTerm, setSearchTerm] = useState('');
-    // ESTADO RESCATADO: Controla qué categoría estamos viendo
-    const [filtroActivo, setFiltroActivo] = useState('todos');
+    const [filtroActivo, setFiltroActivo] = useState<'todos' | 'descuento' | 'garage'>('todos');
 
     return (
         <div className="min-h-screen bg-gray-100 font-sans flex flex-col">
             <style>{`
                 .hero-gradient { background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%); }
-                .active-ring { ring: 4px solid white; transform: scale(1.05); }
             `}</style>
 
             {/* HEADER */}
@@ -58,11 +57,15 @@ const App: React.FC = () => {
                         />
                     </div>
 
-                    {/* BOTONES CON VIDA */}
+                    {/* 2. BOTONES CON VIDA (onClick) */}
                     <div className="flex flex-wrap justify-center gap-4">
                         <button 
                             onClick={() => setFiltroActivo(filtroActivo === 'descuento' ? 'todos' : 'descuento')}
-                            className={`flex items-center gap-2 font-bold py-3 px-8 rounded-xl transition-all shadow-lg transform hover:scale-105 ${filtroActivo === 'descuento' ? 'bg-white text-green-600 ring-4 ring-green-300' : 'bg-green-500 text-white'}`}
+                            className={`flex items-center gap-2 font-bold py-3 px-8 rounded-xl transition-all shadow-lg transform hover:scale-105 ${
+                                filtroActivo === 'descuento' 
+                                ? 'bg-white text-green-600 ring-4 ring-green-400' 
+                                : 'bg-green-500 text-white'
+                            }`}
                         >
                             <Percent className="w-5 h-5" />
                             {filtroActivo === 'descuento' ? 'Viendo Descuentos' : 'Productos con Descuento'}
@@ -70,7 +73,11 @@ const App: React.FC = () => {
 
                         <button 
                             onClick={() => setFiltroActivo(filtroActivo === 'garage' ? 'todos' : 'garage')}
-                            className={`flex items-center gap-2 font-bold py-3 px-8 rounded-xl transition-all shadow-lg transform hover:scale-105 ${filtroActivo === 'garage' ? 'bg-white text-orange-600 ring-4 ring-orange-300' : 'bg-orange-500 text-white'}`}
+                            className={`flex items-center gap-2 font-bold py-3 px-8 rounded-xl transition-all shadow-lg transform hover:scale-105 ${
+                                filtroActivo === 'garage' 
+                                ? 'bg-white text-orange-600 ring-4 ring-orange-400' 
+                                : 'bg-orange-500 text-white'
+                            }`}
                         >
                             <Tag className="w-5 h-5" />
                             {filtroActivo === 'garage' ? 'Viendo Garage' : 'Venta de Garage'}
@@ -78,10 +85,10 @@ const App: React.FC = () => {
                     </div>
                 </div>
 
-                {/* CONTENEDOR DE PRODUCTOS DINÁMICO */}
+                {/* 3. TÍTULO DINÁMICO SEGÚN EL BOTÓN PRESIONADO */}
                 <div className="text-center mb-8">
                     <h2 className="text-2xl font-bold text-gray-800 capitalize">
-                        {filtroActivo === 'todos' ? 'Todos los Productos' : `Filtrando por: ${filtroActivo}`}
+                        {filtroActivo === 'todos' ? 'Todos los Productos' : `Mostrando: ${filtroActivo}`}
                     </h2>
                 </div>
 
@@ -89,8 +96,10 @@ const App: React.FC = () => {
                     {[1, 2, 3].map((i) => (
                         <div key={i} className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 text-center hover:shadow-md transition-shadow">
                             <Store className="w-16 h-16 text-blue-500 mx-auto mb-4 opacity-20" />
-                            <h3 className="text-xl font-bold text-gray-800 mb-2">Cargando {filtroActivo}...</h3>
-                            <p className="text-gray-500">Buscando en la base de datos de Pymes.</p>
+                            <h3 className="text-xl font-bold text-gray-800 mb-2">
+                                {filtroActivo === 'todos' ? 'Producto Pyme' : `Oferta ${filtroActivo}`}
+                            </h3>
+                            <p className="text-gray-500">Pronto podrás ver aquí los productos reales.</p>
                         </div>
                     ))}
                 </div>
