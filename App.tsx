@@ -15,6 +15,7 @@ const App: React.FC = () => {
             setLoading(true);
             
             // 1. URL PÚBLICA (Directa en el código para evitar errores de lectura en Netlify)
+            // Ya tiene el https:// obligatorio
             const url = "https://lsifmouszhweotcbljck.supabase.co";
 
             // 2. LLAVE PRIVADA (Oculta en Netlify)
@@ -31,6 +32,7 @@ const App: React.FC = () => {
             try {
                 // Intentamos conectar
                 const supabase = createClient(url, key);
+                // NOTA: Asegúrate que en Supabase tu tabla se llame 'productos' (minúscula)
                 const { data, error } = await supabase.from('productos').select('*');
                 
                 if (error) throw error;
