@@ -1,51 +1,48 @@
 import React, { useState, useEffect } from 'react';
-import { Search, ShoppingBag, User, Store, Percent, Tag, Mail, Phone, LogIn, UserPlus, MessageCircle } from 'lucide-react';
+import { Search, ShoppingBag, Store, Percent, Tag, Mail, Phone, LogIn, UserPlus, MessageCircle } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 
-// --- CONEXIÓN DIRECTA A SUPABASE ---
+// --- CONEXIÓN SEGURA ---
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-// Inicializamos el cliente. Si faltan las llaves, no explotará, pero avisará en consola.
-const supabase = createClient(
-  supabaseUrl || 'https://falta-url.supabase.co', 
-  supabaseAnonKey || 'falta-key'
-);
+// Verificación de seguridad: Si no hay llaves, no intentamos conectar para evitar la pantalla blanca
+const supabase = (supabaseUrl && supabaseKey) 
+    ? createClient(supabaseUrl, supabaseKey)
+    : null;
 
 const App: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [filtroActivo, setFiltroActivo] = useState<'todos' | 'descuento' | 'garage'>('todos');
-    
     const [productos, setProductos] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [errorMsg, setErrorMsg] = useState('');
 
-    // Cargar productos al iniciar
     useEffect(() => {
         const fetchProductos = async () => {
-            if (!supabaseUrl || !supabaseAnonKey) {
-                console.error("FALTAN LAS LLAVES DE SUPABASE EN NETLIFY");
+            // Si la conexión falló, mostramos un mensaje amigable en pantalla
+            if (!supabase) {
+                setErrorMsg("Faltan las credenciales. Revisa las variables en Netlify.");
                 setLoading(false);
                 return;
             }
 
             setLoading(true);
-            const { data, error } = await supabase
-                .from('productos')
-                .select('*');
-            
-            if (error) {
-                console.log('Error cargando:', error);
-            } else {
+            try {
+                const { data, error } = await supabase.from('productos').select('*');
+                if (error) throw error;
                 setProductos(data || []);
+            } catch (err: any) {
+                console.error("Error al cargar:", err);
+                setErrorMsg("No se pudieron cargar los productos.");
             }
-            
             setLoading(false);
         };
 
         fetchProductos();
     }, []);
 
-    // Filtrar productos
+    // Filtros
     const productosVisibles = productos.filter(p => {
         const coincideBusqueda = p.nombre.toLowerCase().includes(searchTerm.toLowerCase());
         let coincideBoton = true;
@@ -62,7 +59,6 @@ const App: React.FC = () => {
                 .antü-gold:hover { background: #967a3d; }
             `}</style>
 
-            {/* HEADER */}
             <header className="bg-white shadow-md sticky top-0 z-50">
                 <div className="container mx-auto px-4 py-3 flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 cursor-pointer shrink-0" onClick={() => {setFiltroActivo('todos'); setSearchTerm('');}}>
@@ -103,7 +99,6 @@ const App: React.FC = () => {
                         Conectando Pymes y Microempresas contigo, a un solo click.
                     </p>
                     
-                    {/* BUSCADOR */}
                     <div className="max-w-xl mx-auto relative group mb-10">
                         <Search className="absolute left-4 top-4 text-gray-400 w-6 h-6 group-focus-within:text-blue-500 transition-colors" />
                         <input
@@ -115,7 +110,6 @@ const App: React.FC = () => {
                         />
                     </div>
 
-                    {/* BOTONES */}
                     <div className="flex flex-wrap justify-center gap-4">
                         <button 
                             onClick={() => setFiltroActivo(filtroActivo === 'descuento' ? 'todos' : 'descuento')}
@@ -139,17 +133,24 @@ const App: React.FC = () => {
                     </div>
                 </div>
 
-                {/* TÍTULO */}
                 <div className="text-center mb-8">
                     <h2 className="text-2xl font-bold text-gray-800 capitalize">
                         {filtroActivo === 'todos' ? 'Catálogo Completo' : `Mostrando: ${filtroActivo}`}
                     </h2>
+                    
+                    {/* AQUI SE MOSTRARÁ EL ERROR SI FALTA ALGO, EN LUGAR DE PANTALLA BLANCA */}
+                    {errorMsg && (
+                        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mt-4 max-w-lg mx-auto">
+                            <p className="font-bold">Estado de Conexión:</p>
+                            <p>{errorMsg}</p>
+                        </div>
+                    )}
+
                     <p className="text-gray-500 mt-2">
-                        {loading ? 'Buscando productos...' : `${productosVisibles.length} productos encontrados`}
+                        {loading ? 'Buscando productos...' : (!errorMsg && `${productosVisibles.length} productos encontrados`)}
                     </p>
                 </div>
 
-                {/* GRILLA DE PRODUCTOS */}
                 {loading ? (
                     <div className="text-center py-20">
                         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
@@ -196,7 +197,6 @@ const App: React.FC = () => {
                 )}
             </main>
 
-            {/* CHAT ANTÜ */}
             <button 
                 className="fixed bottom-6 right-6 antü-gold text-white p-4 rounded-full shadow-2xl hover:scale-110 transition-all flex items-center gap-3 z-50 group"
                 onClick={() => alert('¡Hola! Soy Antü. ¿En qué puedo ayudarte?')}
