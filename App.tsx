@@ -1,165 +1,71 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import type { Product, OrderItem, Order, Category, User, PublicRequest, Rating, Variant, AnalyticsData, Message } from './types';
-import Header from './components/Header';
-import Footer from './components/Footer';
-import ProductCard from './components/ProductCard';
-import AdminPanel from './components/AdminPanel';
-import LoginModal from './components/LoginPanel';
-import RegisterModal from './components/RegisterModal';
-import SellerProfileModal from './components/SellerProfileModal';
-import CartModal from './components/CartModal';
-import SellerSelectionModal from './components/SellerSelectionModal';
-import OrderDetailModal from './components/OrderDetailModal';
-import CustomerPanel from './components/customer/CustomerPanel';
-import PublicRequestBoard from './components/PublicRequestBoard';
-import PublicRequestModal from './components/PublicRequestModal';
-import QuoteManagementModal from './components/admin/QuoteManagementModal';
-import RatingModal from './components/RatingModal';
-import ProductDetailModal from './components/ProductDetailModal';
-import ForgotPasswordModal from './components/ForgotPasswordModal';
-import ChatModal from './components/ChatModal';
-import PaymentStepModal from './components/PaymentStepModal';
-import config from './config';
-import { supabase } from './supabaseClient';
-import { generateAntuResponse, ANTU_ASSISTANT_ID } from './lib/aiAssistant';
-import { mockProducts, mockCategories, mockUsers, mockRatings, mockOrders, mockPublicRequests } from './mockData';
-
-const USE_MOCK_DATA = false;
+import React, { useState, useMemo } from 'react';
+import { Search, ShoppingBag, User, Store, MessageSquare } from 'lucide-react';
 
 const App: React.FC = () => {
-    const [products, setProducts] = useState<Product[]>([]);
-    const [orders, setOrders] = useState<Order[]>([]);
-    const [publicRequests, setPublicRequests] = useState<PublicRequest[]>([]);
-    const [categories, setCategories] = useState<Category[]>([]);
-    const [ratings, setRatings] = useState<Rating[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
-    const [view, setView] = useState<'customer' | 'admin' | 'user_panel' | 'public_requests'>('customer');
-    const [filterDiscounted, setFilterDiscounted] = useState(false);
-    const [filterGarageSale, setFilterGarageSale] = useState(false);
-    const [configWarnings, setConfigWarnings] = useState<string[]>([]);
-    const [users, setUsers] = useState<User[]>([]);
-    const [currentUser, setCurrentUser] = useState<User | null>(null);
-    const [authLoading, setAuthLoading] = useState(true);
-    const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-    const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
-    const [isForgotPasswordModalOpen, setIsForgotPasswordModalOpen] = useState(false);
-    const [isChatModalOpen, setIsChatModalOpen] = useState(false);
-    const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
-    const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
-    const [contactChatMessages, setContactChatMessages] = useState<Message[]>([]);
-    const [credits, setCredits] = useState(10);
-    const [initialAdminView, setInitialAdminView] = useState<'dashboard' | 'categories' | 'products' | 'analytics' | 'profile'>('dashboard');
-    const [viewingSeller, setViewingSeller] = useState<User | null>(null);
-    const [sellerSelectionOpen, setSellerSelectionOpen] = useState(false);
-    const [viewingOrder, setViewingOrder] = useState<Order | null>(null);
-    const [isPublicRequestModalOpen, setIsPublicRequestModalOpen] = useState(false);
-    const [managingOrder, setManagingOrder] = useState<Order | null>(null);
-    const [ratingOrder, setRatingOrder] = useState<Order | null>(null);
-    const [viewingProductDetail, setViewingProductDetail] = useState<Product | null>(null);
-    const [orderForPayment, setOrderForPayment] = useState<Order | null>(null);
-
-    useEffect(() => {
-        if (USE_MOCK_DATA) {
-            setProducts(mockProducts);
-            setCategories(mockCategories);
-            setUsers(mockUsers);
-            setRatings(mockRatings);
-            setOrders(mockOrders);
-            setPublicRequests(mockPublicRequests);
-            setAuthLoading(false);
-            return;
-        }
-
-        const fetchAllData = async () => {
-             const [
-                { data: productsData },
-                { data: categoriesData },
-                { data: profilesData },
-                { data: requestsData },
-                { data: ratingsData },
-            ] = await Promise.all([
-                supabase.from('products').select('*'),
-                supabase.from('categories').select('*'),
-                supabase.from('profiles').select('*'),
-                supabase.from('public_requests').select('*'),
-                supabase.from('ratings').select('*'),
-            ]);
-
-            if (productsData) {
-                setProducts(productsData.map((p: any) => ({
-                    ...p, sellerId: p.seller_id, isGarageSale: p.is_garage_sale
-                })));
-            }
-            if (categoriesData) setCategories(categoriesData as Category[]);
-            if (profilesData) setUsers(profilesData as User[]);
-        };
-
-        fetchAllData();
-        setAuthLoading(false);
-    }, []);
-
-    const filteredProducts = useMemo(() => {
-        return products.filter(product => {
-            const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
-            let matchesFilter = true;
-            if (filterDiscounted) {
-                matchesFilter = Array.isArray(product.variants) && product.variants.some(v => v.discount && v.discount > 0);
-            } else if (filterGarageSale) {
-                matchesFilter = product.isGarageSale === true;
-            }
-            return matchesSearch && matchesFilter;
-        });
-    }, [products, searchTerm, filterDiscounted, filterGarageSale]);
-
-    const handleLogout = async () => {
-        await supabase.auth.signOut();
-        setView('customer');
-    };
 
     return (
-        <div className="bg-gray-100 min-h-screen">
-            <Header 
-                orderItemCount={orderItems.length}
-                onOrderClick={() => setIsOrderModalOpen(true)}
-                currentUser={currentUser}
-                onLoginClick={() => setIsLoginModalOpen(true)}
-                onRegisterClick={() => setIsRegisterModalOpen(true)}
-                onLogoutClick={handleLogout}
-                onAdminClick={() => { setInitialAdminView('dashboard'); setView('admin'); }}
-                onUserPanelClick={() => setView('user_panel')}
-                onViewPublicRequestsClick={() => setView('public_requests')}
-                onContactClick={() => setIsChatModalOpen(true)}
-                onGoHome={() => setView('customer')}
-            />
+        <div className="bg-gray-100 min-h-screen font-sans">
+            {/* HEADER INTEGRADO */}
+            <header className="bg-white shadow-sm sticky top-0 z-50">
+                <div className="container mx-auto px-4 py-3 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <ShoppingBag className="text-blue-600 w-8 h-8" />
+                        <span className="text-xl font-bold text-gray-800">El Gran Bazar</span>
+                    </div>
+                    <nav className="hidden md:flex items-center gap-6 text-gray-600 font-medium">
+                        <a href="#" className="hover:text-blue-600">Inicio</a>
+                        <a href="#" className="hover:text-blue-600">Categorías</a>
+                        <a href="#" className="hover:text-blue-600">Ofertas</a>
+                    </nav>
+                    <div className="flex items-center gap-4">
+                        <User className="text-gray-600 w-6 h-6 cursor-pointer hover:text-blue-600" />
+                    </div>
+                </div>
+            </header>
+
             <main className="container mx-auto px-4 py-8">
-                <div className="text-center p-12 bg-blue-700 text-white rounded-lg shadow-lg">
-                    <h1 className="text-4xl font-extrabold">Bienvenido a El Gran Bazar</h1>
-                    <p className="mt-4 text-lg text-blue-200">Conectando microempresas contigo, a un solo click.</p>
-                    <div className="mt-8 max-w-2xl mx-auto">
+                {/* HERO SECTION AZUL (Tu diseño original) */}
+                <div className="text-center p-12 bg-blue-600 text-white rounded-2xl shadow-xl mb-12">
+                    <h1 className="text-5xl font-extrabold mb-4">Bienvenido a El Gran Bazar</h1>
+                    <p className="text-xl text-blue-100 mb-8">Conectando microempresas contigo, a un solo click.</p>
+                    
+                    <div className="max-w-2xl mx-auto relative">
+                        <Search className="absolute left-4 top-3.5 text-gray-400 w-5 h-5" />
                         <input
                             type="text"
-                            placeholder="Buscar productos..."
+                            placeholder="Buscar productos en todo el bazar..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full p-3 rounded-lg text-gray-800"
+                            className="w-full pl-12 pr-4 py-3.5 rounded-xl text-gray-800 shadow-inner focus:outline-none focus:ring-2 focus:ring-blue-400"
                         />
+                    </div>
+
+                    <div className="mt-8 flex flex-wrap justify-center gap-4">
+                        <button className="bg-green-500 hover:bg-green-600 text-white font-bold py-2.5 px-6 rounded-lg transition-all shadow-md">
+                            % Productos con Descuento
+                        </button>
+                        <button className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2.5 px-6 rounded-lg transition-all shadow-md">
+                            🏷️ Venta de Garage
+                        </button>
                     </div>
                 </div>
 
-                <div className="mt-12 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
-                    {filteredProducts.map(product => (
-                        <ProductCard
-                            key={product.id}
-                            product={product}
-                            onContactSeller={() => {}}
-                            onAddToOrder={() => {}}
-                            ratings={ratings}
-                            onViewOptions={setViewingProductDetail}
-                        />
-                    ))}
+                {/* CONTENIDO TEMPORAL DE PRODUCTOS */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 text-center">
+                        <Store className="w-12 h-12 text-blue-500 mx-auto mb-4" />
+                        <h3 className="text-lg font-bold">Cargando Catálogo...</h3>
+                        <p className="text-gray-500 text-sm">Estamos conectando con la base de datos.</p>
+                    </div>
                 </div>
             </main>
-            <Footer />
+
+            <footer className="bg-white border-t mt-20 py-10">
+                <div className="container mx-auto px-4 text-center text-gray-500 text-sm">
+                    <p>© 2026 El Gran Bazar. Todos los derechos reservados.</p>
+                </div>
+            </footer>
         </div>
     );
 };
