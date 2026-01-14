@@ -1,7 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { Search, ShoppingBag, User, Store, Percent, Tag, Mail, Phone, LogIn, UserPlus, MessageCircle } from 'lucide-react';
-// Importamos la conexión que creaste
-import { supabase } from './supabaseClient';
+// IMPORTANTE: Importamos la librería de Supabase directamente aquí
+import { createClient } from '@supabase/supabase-js';
+
+// --- CONEXIÓN DIRECTA (Para evitar errores de archivo no encontrado) ---
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+// Si faltan las llaves, esto evitará que la app explote, pero avisará en la consola
+const supabase = createClient(
+  supabaseUrl || 'https://falta-url.supabase.co', 
+  supabaseAnonKey || 'falta-key'
+);
+// -----------------------------------------------------------------------
 
 const App: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
@@ -14,13 +25,22 @@ const App: React.FC = () => {
     // ESTO CARGA LOS PRODUCTOS APENAS SE ABRE LA PÁGINA
     useEffect(() => {
         const fetchProductos = async () => {
+            if (!supabaseUrl || !supabaseAnonKey) {
+                console.error("FALTAN LAS LLAVES DE SUPABASE EN NETLIFY");
+                setLoading(false);
+                return;
+            }
+
             setLoading(true);
             const { data, error } = await supabase
                 .from('productos')
                 .select('*');
             
-            if (error) console.log('Error cargando:', error);
-            else setProductos(data || []);
+            if (error) {
+                console.log('Error cargando:', error);
+            } else {
+                setProductos(data || []);
+            }
             
             setLoading(false);
         };
@@ -167,55 +187,4 @@ const App: React.FC = () => {
                                 
                                 {/* Info del Producto */}
                                 <div className="p-6">
-                                    <h3 className="text-xl font-bold text-gray-800 mb-2">{producto.nombre}</h3>
-                                    <p className="text-gray-500 text-sm mb-4 line-clamp-2">{producto.descripcion}</p>
-                                    
-                                    <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
-                                        <span className="text-2xl font-black text-blue-600">
-                                            ${producto.precio.toLocaleString('es-CL')}
-                                        </span>
-                                        <button className="p-2 bg-blue-50 text-blue-600 rounded-full hover:bg-blue-600 hover:text-white transition-colors">
-                                            <ShoppingBag className="w-5 h-5" />
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </main>
-
-            {/* CHAT CON ANTÜ */}
-            <button 
-                className="fixed bottom-6 right-6 antü-gold text-white p-4 rounded-full shadow-2xl hover:scale-110 transition-all flex items-center gap-3 z-50 group"
-                onClick={() => alert('¡Hola! Soy Antü. ¿En qué puedo ayudarte?')}
-            >
-                <MessageCircle className="w-6 h-6" />
-                <span className="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-500 font-bold whitespace-nowrap">
-                    Chat con Antü
-                </span>
-            </button>
-
-            <footer className="bg-[#2D3748] text-gray-400 mt-12">
-                <div className="container mx-auto py-8 px-4">
-                    <div className="text-center text-sm border-b border-gray-700 pb-6">
-                        <p>&copy; 2025 - {new Date().getFullYear()} El Gran Bazar. Todos los derechos reservados.</p>
-                        <p className="mt-1 font-semibold text-blue-400">Pymes y Microempresas a un Click</p>
-                    </div>
-                    <div className="mt-6 flex justify-center items-center space-x-8 text-sm flex-wrap">
-                        <a href="mailto:microempresasaunclick@gmail.com" className="flex items-center space-x-2 hover:text-white transition-colors my-2">
-                            <Mail className="h-5 w-5 text-blue-400" />
-                            <span>microempresasaunclick@gmail.com</span>
-                        </a>
-                        <a href="tel:+56931761901" className="flex items-center space-x-2 hover:text-white transition-colors my-2">
-                            <Phone className="h-5 w-5 text-green-400" />
-                            <span>+569-31761901 / +569-47436919</span>
-                        </a>
-                    </div>
-                </div>
-            </footer>
-        </div>
-    );
-};
-
-export default App;
+                                    <h3 className="
