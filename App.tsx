@@ -1,28 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { Search, ShoppingBag, User, Store, Percent, Tag, Mail, Phone, LogIn, UserPlus, MessageCircle } from 'lucide-react';
-// IMPORTANTE: Importamos la librería de Supabase directamente aquí
 import { createClient } from '@supabase/supabase-js';
 
-// --- CONEXIÓN DIRECTA (Para evitar errores de archivo no encontrado) ---
+// --- CONEXIÓN DIRECTA A SUPABASE ---
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-// Si faltan las llaves, esto evitará que la app explote, pero avisará en la consola
+// Inicializamos el cliente. Si faltan las llaves, no explotará, pero avisará en consola.
 const supabase = createClient(
   supabaseUrl || 'https://falta-url.supabase.co', 
   supabaseAnonKey || 'falta-key'
 );
-// -----------------------------------------------------------------------
 
 const App: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [filtroActivo, setFiltroActivo] = useState<'todos' | 'descuento' | 'garage'>('todos');
     
-    // Estados para guardar los datos reales de Supabase
     const [productos, setProductos] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
-    // ESTO CARGA LOS PRODUCTOS APENAS SE ABRE LA PÁGINA
+    // Cargar productos al iniciar
     useEffect(() => {
         const fetchProductos = async () => {
             if (!supabaseUrl || !supabaseAnonKey) {
@@ -48,16 +45,12 @@ const App: React.FC = () => {
         fetchProductos();
     }, []);
 
-    // Lógica para filtrar los productos reales
+    // Filtrar productos
     const productosVisibles = productos.filter(p => {
-        // 1. Filtro por buscador (texto)
         const coincideBusqueda = p.nombre.toLowerCase().includes(searchTerm.toLowerCase());
-        
-        // 2. Filtro por botones (Categoría/Descuento)
         let coincideBoton = true;
         if (filtroActivo === 'descuento') coincideBoton = p.descuento === true;
         if (filtroActivo === 'garage') coincideBoton = p.categoria === 'garage';
-
         return coincideBusqueda && coincideBoton;
     });
 
@@ -101,7 +94,7 @@ const App: React.FC = () => {
             </header>
 
             <main className="container mx-auto px-4 py-8 flex-grow">
-                {/* HERO SECTION */}
+                {/* HERO */}
                 <div className="hero-gradient text-center p-8 md:p-16 text-white rounded-3xl shadow-2xl mb-12">
                     <h1 className="text-4xl md:text-6xl font-black mb-6 leading-tight">
                         Bienvenido a <br/> El Gran Bazar
@@ -110,7 +103,7 @@ const App: React.FC = () => {
                         Conectando Pymes y Microempresas contigo, a un solo click.
                     </p>
                     
-                    {/* BUSCADOR REAL */}
+                    {/* BUSCADOR */}
                     <div className="max-w-xl mx-auto relative group mb-10">
                         <Search className="absolute left-4 top-4 text-gray-400 w-6 h-6 group-focus-within:text-blue-500 transition-colors" />
                         <input
@@ -122,7 +115,7 @@ const App: React.FC = () => {
                         />
                     </div>
 
-                    {/* BOTONES DE FILTRO */}
+                    {/* BOTONES */}
                     <div className="flex flex-wrap justify-center gap-4">
                         <button 
                             onClick={() => setFiltroActivo(filtroActivo === 'descuento' ? 'todos' : 'descuento')}
@@ -146,7 +139,7 @@ const App: React.FC = () => {
                     </div>
                 </div>
 
-                {/* TÍTULO DINÁMICO */}
+                {/* TÍTULO */}
                 <div className="text-center mb-8">
                     <h2 className="text-2xl font-bold text-gray-800 capitalize">
                         {filtroActivo === 'todos' ? 'Catálogo Completo' : `Mostrando: ${filtroActivo}`}
@@ -156,7 +149,7 @@ const App: React.FC = () => {
                     </p>
                 </div>
 
-                {/* GRILLA DE PRODUCTOS REALES */}
+                {/* GRILLA DE PRODUCTOS */}
                 {loading ? (
                     <div className="text-center py-20">
                         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
@@ -166,7 +159,6 @@ const App: React.FC = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                         {productosVisibles.map((producto) => (
                             <div key={producto.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300 group">
-                                {/* Imagen del Producto */}
                                 <div className="h-64 bg-gray-200 relative overflow-hidden">
                                     <img 
                                         src={producto.imagen_url || "https://via.placeholder.com/400"} 
@@ -185,6 +177,56 @@ const App: React.FC = () => {
                                     )}
                                 </div>
                                 
-                                {/* Info del Producto */}
                                 <div className="p-6">
-                                    <h3 className="
+                                    <h3 className="text-xl font-bold text-gray-800 mb-2">{producto.nombre}</h3>
+                                    <p className="text-gray-500 text-sm mb-4 line-clamp-2">{producto.descripcion}</p>
+                                    
+                                    <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
+                                        <span className="text-2xl font-black text-blue-600">
+                                            ${producto.precio.toLocaleString('es-CL')}
+                                        </span>
+                                        <button className="p-2 bg-blue-50 text-blue-600 rounded-full hover:bg-blue-600 hover:text-white transition-colors">
+                                            <ShoppingBag className="w-5 h-5" />
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </main>
+
+            {/* CHAT ANTÜ */}
+            <button 
+                className="fixed bottom-6 right-6 antü-gold text-white p-4 rounded-full shadow-2xl hover:scale-110 transition-all flex items-center gap-3 z-50 group"
+                onClick={() => alert('¡Hola! Soy Antü. ¿En qué puedo ayudarte?')}
+            >
+                <MessageCircle className="w-6 h-6" />
+                <span className="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-500 font-bold whitespace-nowrap">
+                    Chat con Antü
+                </span>
+            </button>
+
+            <footer className="bg-[#2D3748] text-gray-400 mt-12">
+                <div className="container mx-auto py-8 px-4">
+                    <div className="text-center text-sm border-b border-gray-700 pb-6">
+                        <p>&copy; 2025 - {new Date().getFullYear()} El Gran Bazar. Todos los derechos reservados.</p>
+                        <p className="mt-1 font-semibold text-blue-400">Pymes y Microempresas a un Click</p>
+                    </div>
+                    <div className="mt-6 flex justify-center items-center space-x-8 text-sm flex-wrap">
+                        <a href="mailto:microempresasaunclick@gmail.com" className="flex items-center space-x-2 hover:text-white transition-colors my-2">
+                            <Mail className="h-5 w-5 text-blue-400" />
+                            <span>microempresasaunclick@gmail.com</span>
+                        </a>
+                        <a href="tel:+56931761901" className="flex items-center space-x-2 hover:text-white transition-colors my-2">
+                            <Phone className="h-5 w-5 text-green-400" />
+                            <span>+569-31761901 / +569-47436919</span>
+                        </a>
+                    </div>
+                </div>
+            </footer>
+        </div>
+    );
+};
+
+export default App;
