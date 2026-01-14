@@ -15,7 +15,7 @@ const App: React.FC = () => {
             setLoading(true);
             
             // 1. URL FIJA (Para eliminar cualquier error de configuración)
-            const url = "https://lsifmouszhweotcbljck.supabase.co";
+            const url = "https://dcssdiohhbmbqwuzuhda.supabase.co";
 
             // 2. LLAVE (Lee desde Netlify)
             const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
