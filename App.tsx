@@ -148,3 +148,20 @@ const App: React.FC = () => {
 
                 <div className="mt-12 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
                     {filteredProducts.map(product => (
+                        <ProductCard
+                            key={product.id}
+                            product={product}
+                            onContactSeller={() => {}}
+                            onAddToOrder={() => {}}
+                            ratings={ratings}
+                            onViewOptions={setViewingProductDetail}
+                        />
+                    ))}
+                </div>
+            </main>
+            <Footer />
+        </div>
+    );
+};
+
+export default App;
