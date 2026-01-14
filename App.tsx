@@ -1,9 +1,45 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, ShoppingBag, User, Store, Percent, Tag, Mail, Phone, LogIn, UserPlus, MessageCircle } from 'lucide-react';
+// Importamos la conexión que creaste
+import { supabase } from './supabaseClient';
 
 const App: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [filtroActivo, setFiltroActivo] = useState<'todos' | 'descuento' | 'garage'>('todos');
+    
+    // Estados para guardar los datos reales de Supabase
+    const [productos, setProductos] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    // ESTO CARGA LOS PRODUCTOS APENAS SE ABRE LA PÁGINA
+    useEffect(() => {
+        const fetchProductos = async () => {
+            setLoading(true);
+            const { data, error } = await supabase
+                .from('productos')
+                .select('*');
+            
+            if (error) console.log('Error cargando:', error);
+            else setProductos(data || []);
+            
+            setLoading(false);
+        };
+
+        fetchProductos();
+    }, []);
+
+    // Lógica para filtrar los productos reales
+    const productosVisibles = productos.filter(p => {
+        // 1. Filtro por buscador (texto)
+        const coincideBusqueda = p.nombre.toLowerCase().includes(searchTerm.toLowerCase());
+        
+        // 2. Filtro por botones (Categoría/Descuento)
+        let coincideBoton = true;
+        if (filtroActivo === 'descuento') coincideBoton = p.descuento === true;
+        if (filtroActivo === 'garage') coincideBoton = p.categoria === 'garage';
+
+        return coincideBusqueda && coincideBoton;
+    });
 
     return (
         <div className="min-h-screen bg-gray-100 font-sans flex flex-col relative">
@@ -13,10 +49,10 @@ const App: React.FC = () => {
                 .antü-gold:hover { background: #967a3d; }
             `}</style>
 
-            {/* HEADER CON ACCESO */}
+            {/* HEADER */}
             <header className="bg-white shadow-md sticky top-0 z-50">
                 <div className="container mx-auto px-4 py-3 flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 cursor-pointer shrink-0" onClick={() => setFiltroActivo('todos')}>
+                    <div className="flex items-center gap-2 cursor-pointer shrink-0" onClick={() => {setFiltroActivo('todos'); setSearchTerm('');}}>
                         <img 
                             src="/logo-bazar.png" 
                             alt="Logo" 
@@ -54,17 +90,19 @@ const App: React.FC = () => {
                         Conectando Pymes y Microempresas contigo, a un solo click.
                     </p>
                     
+                    {/* BUSCADOR REAL */}
                     <div className="max-w-xl mx-auto relative group mb-10">
                         <Search className="absolute left-4 top-4 text-gray-400 w-6 h-6 group-focus-within:text-blue-500 transition-colors" />
                         <input
                             type="text"
-                            placeholder="Buscar productos..."
+                            placeholder="Ej: Zapatillas, Audífonos..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="w-full pl-12 pr-6 py-4 rounded-2xl text-gray-800 shadow-xl focus:outline-none focus:ring-4 focus:ring-blue-400/50 transition-all text-lg"
                         />
                     </div>
 
+                    {/* BOTONES DE FILTRO */}
                     <div className="flex flex-wrap justify-center gap-4">
                         <button 
                             onClick={() => setFiltroActivo(filtroActivo === 'descuento' ? 'todos' : 'descuento')}
@@ -88,26 +126,69 @@ const App: React.FC = () => {
                     </div>
                 </div>
 
+                {/* TÍTULO DINÁMICO */}
                 <div className="text-center mb-8">
                     <h2 className="text-2xl font-bold text-gray-800 capitalize">
-                        {filtroActivo === 'todos' ? 'Catálogo de Pymes' : `Mostrando: ${filtroActivo}`}
+                        {filtroActivo === 'todos' ? 'Catálogo Completo' : `Mostrando: ${filtroActivo}`}
                     </h2>
+                    <p className="text-gray-500 mt-2">
+                        {loading ? 'Buscando productos...' : `${productosVisibles.length} productos encontrados`}
+                    </p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
-                    {[1, 2, 3].map((i) => (
-                        <div key={i} className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
-                            <Store className="w-16 h-16 text-blue-500 mx-auto mb-4 opacity-20" />
-                            <h3 className="text-xl font-bold text-gray-800">Pronto Productos Reales</h3>
-                        </div>
-                    ))}
-                </div>
+                {/* GRILLA DE PRODUCTOS REALES */}
+                {loading ? (
+                    <div className="text-center py-20">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                        <p className="text-gray-500">Cargando catálogo...</p>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        {productosVisibles.map((producto) => (
+                            <div key={producto.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300 group">
+                                {/* Imagen del Producto */}
+                                <div className="h-64 bg-gray-200 relative overflow-hidden">
+                                    <img 
+                                        src={producto.imagen_url || "https://via.placeholder.com/400"} 
+                                        alt={producto.nombre}
+                                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                                    />
+                                    {producto.descuento && (
+                                        <span className="absolute top-4 right-4 bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg">
+                                            OFERTA
+                                        </span>
+                                    )}
+                                    {producto.categoria === 'garage' && (
+                                        <span className="absolute top-4 left-4 bg-orange-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg">
+                                            GARAGE
+                                        </span>
+                                    )}
+                                </div>
+                                
+                                {/* Info del Producto */}
+                                <div className="p-6">
+                                    <h3 className="text-xl font-bold text-gray-800 mb-2">{producto.nombre}</h3>
+                                    <p className="text-gray-500 text-sm mb-4 line-clamp-2">{producto.descripcion}</p>
+                                    
+                                    <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
+                                        <span className="text-2xl font-black text-blue-600">
+                                            ${producto.precio.toLocaleString('es-CL')}
+                                        </span>
+                                        <button className="p-2 bg-blue-50 text-blue-600 rounded-full hover:bg-blue-600 hover:text-white transition-colors">
+                                            <ShoppingBag className="w-5 h-5" />
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </main>
 
-            {/* BOTÓN FLOTANTE CHAT CON ANTÜ */}
+            {/* CHAT CON ANTÜ */}
             <button 
                 className="fixed bottom-6 right-6 antü-gold text-white p-4 rounded-full shadow-2xl hover:scale-110 transition-all flex items-center gap-3 z-50 group"
-                onClick={() => alert('Conectando con Antü...')}
+                onClick={() => alert('¡Hola! Soy Antü. ¿En qué puedo ayudarte?')}
             >
                 <MessageCircle className="w-6 h-6" />
                 <span className="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-500 font-bold whitespace-nowrap">
