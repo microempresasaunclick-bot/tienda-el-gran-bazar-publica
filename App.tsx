@@ -10,12 +10,13 @@ const App: React.FC = () => {
                 .hero-gradient { background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%); }
             `}</style>
 
-            {/* HEADER */}
+            {/* HEADER CON LOGO PROFESIONAL */}
             <header className="bg-white shadow-sm sticky top-0 z-50">
                 <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <ShoppingBag className="text-blue-600 w-8 h-8" />
-                        <span className="text-xl font-bold text-gray-800 tracking-tight">El Gran Bazar</span>
+                    <div className="flex items-center gap-3">
+                        {/* Esta ruta busca el logo que acabas de subir a la carpeta public */}
+                        <img src="/logo-bazar.png" alt="Logo El Gran Bazar" className="h-12 w-auto object-contain" />
+                        <span className="text-xl font-bold text-gray-800 tracking-tight uppercase">El Gran Bazar</span>
                     </div>
                     <div className="flex items-center gap-4">
                         <User className="text-gray-600 w-6 h-6 cursor-pointer hover:text-blue-600 transition-colors" />
