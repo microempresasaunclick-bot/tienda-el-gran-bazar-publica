@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
-import { Search, ShoppingBag, User, Store, Percent, Tag } from 'lucide-react';
+import { Search, ShoppingBag, User, Store, Percent, Tag, Mail, Phone } from 'lucide-react';
 
 const App: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
 
     return (
-        <div className="min-h-screen bg-gray-100 font-sans">
-            {/* Estilos internos para asegurar el diseño azul profesional */}
+        <div className="min-h-screen bg-gray-100 font-sans flex flex-col">
             <style>{`
                 .hero-gradient { background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%); }
             `}</style>
@@ -24,8 +23,8 @@ const App: React.FC = () => {
                 </div>
             </header>
 
-            <main className="container mx-auto px-4 py-8">
-                {/* HERO SECTION CON EL NUEVO TEXTO DE PYMES */}
+            <main className="container mx-auto px-4 py-8 flex-grow">
+                {/* HERO SECTION */}
                 <div className="hero-gradient text-center p-8 md:p-16 text-white rounded-3xl shadow-2xl mb-12">
                     <h1 className="text-4xl md:text-6xl font-black mb-6 leading-tight">
                         Bienvenido a <br/> El Gran Bazar
@@ -60,7 +59,7 @@ const App: React.FC = () => {
                 {/* VISTA PREVIA DE PRODUCTOS */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                     {[1, 2, 3].map((i) => (
-                        <div key={i} className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 text-center hover:shadow-md transition-shadow">
+                        <div key={i} className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 text-center">
                             <Store className="w-16 h-16 text-blue-500 mx-auto mb-4 opacity-20" />
                             <h3 className="text-xl font-bold text-gray-800 mb-2">Cargando Catálogo...</h3>
                             <p className="text-gray-500">Sincronizando productos de Pymes locales.</p>
@@ -69,10 +68,23 @@ const App: React.FC = () => {
                 </div>
             </main>
 
-            <footer className="bg-white border-t mt-20 py-12">
-                <div className="container mx-auto px-4 text-center">
-                    <p className="text-gray-400 font-medium italic">"Impulsando el comercio local"</p>
-                    <p className="text-gray-300 text-xs mt-4">© 2026 El Gran Bazar. Santiago, Chile.</p>
+            {/* FOOTER RESCATADO DE VS CODE */}
+            <footer className="bg-[#2D3748] text-gray-400 mt-12">
+                <div className="container mx-auto py-8 px-4">
+                    <div className="text-center text-sm border-b border-gray-700 pb-6">
+                        <p>&copy; 2025 - {new Date().getFullYear()} El Gran Bazar. Todos los derechos reservados.</p>
+                        <p className="mt-1 font-semibold text-blue-400">Pymes y Microempresas a un Click</p>
+                    </div>
+                    <div className="mt-6 flex justify-center items-center space-x-8 text-sm flex-wrap">
+                        <a href="mailto:microempresasaunclick@gmail.com" className="flex items-center space-x-2 hover:text-white transition-colors my-2">
+                            <Mail className="h-5 w-5 text-blue-400" />
+                            <span>microempresasaunclick@gmail.com</span>
+                        </a>
+                        <a href="tel:+56931761901" className="flex items-center space-x-2 hover:text-white transition-colors my-2">
+                            <Phone className="h-5 w-5 text-green-400" />
+                            <span>+569-31761901 / +569-47436919</span>
+                        </a>
+                    </div>
                 </div>
             </footer>
         </div>
