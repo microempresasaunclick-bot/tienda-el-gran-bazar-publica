@@ -60,20 +60,23 @@ const App: React.FC = () => {
                     canvas.height = newHeight;
                     
                     const ctx = canvas.getContext('2d');
-                    ctx?.drawImage(img, 0, 0, newWidth, newHeight);
-
-                    // Comprimir a JPEG con calidad 0.7 (70%)
-                    canvas.toBlob((blob) => {
-                        if (blob) {
-                            const newFile = new File([blob], file.name, {
-                                type: 'image/jpeg',
-                                lastModified: Date.now(),
-                            });
-                            resolve(newFile);
-                        } else {
-                            reject(new Error("Error al comprimir imagen"));
-                        }
-                    }, 'image/jpeg', 0.7); 
+                    if (ctx) {
+                        ctx.drawImage(img, 0, 0, newWidth, newHeight);
+                        // Comprimir a JPEG con calidad 0.7 (70%)
+                        canvas.toBlob((blob) => {
+                            if (blob) {
+                                const newFile = new File([blob], file.name, {
+                                    type: 'image/jpeg',
+                                    lastModified: Date.now(),
+                                });
+                                resolve(newFile);
+                            } else {
+                                reject(new Error("Error al comprimir imagen"));
+                            }
+                        }, 'image/jpeg', 0.7);
+                    } else {
+                        reject(new Error("No se pudo obtener el contexto del canvas"));
+                    }
                 };
                 img.onerror = (error) => reject(error);
             };
@@ -369,4 +372,39 @@ const App: React.FC = () => {
                                             </div>
                                         ) : (
                                             <>
-                                                <UploadCloud className="w-8 h-
+                                                <UploadCloud className="w-8 h-8 mb-2 text-blue-400" />
+                                                <span className="font-medium text-sm">Toca para subir foto</span>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div><label className="block text-sm font-bold text-gray-700 mb-1">Descripción</label><textarea rows={3} value={nuevoProducto.descripcion} onChange={e => setNuevoProducto({...nuevoProducto, descripcion: e.target.value})} className="w-full p-3 border rounded-xl" placeholder="Detalles..."/></div>
+                            <div className="flex items-center gap-2"><input type="checkbox" id="desc" checked={nuevoProducto.descuento} onChange={e => setNuevoProducto({...nuevoProducto, descuento: e.target.checked})} className="w-5 h-5 text-blue-600 rounded"/><label htmlFor="desc" className="text-gray-700 font-medium">¿Oferta?</label></div>
+                            <button type="submit" disabled={loading || procesandoImagen} className="w-full bg-green-600 text-white font-bold py-3 rounded-xl hover:bg-green-700 transition-all shadow-lg flex justify-center items-center gap-2">
+                                <Save className="w-5 h-5"/> {loading || subiendoImagen ? 'Subiendo...' : 'Publicar Ahora'}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {showAuthModal && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 relative">
+                        <button onClick={() => setShowAuthModal(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><X className="w-6 h-6" /></button>
+                        <h2 className="text-2xl font-black text-blue-800 mb-6 text-center">{authMode === 'login' ? 'Bienvenido' : 'Crear Cuenta'}</h2>
+                        <form onSubmit={handleAuth} className="space-y-4">
+                            <div><label className="text-sm font-bold text-gray-700">Correo</label><input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full p-3 border rounded-xl"/></div>
+                            <div><label className="text-sm font-bold text-gray-700">Contraseña</label><input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="w-full p-3 border rounded-xl"/></div>
+                            <button type="submit" className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700">{loading ? '...' : (authMode === 'login' ? 'Ingresar' : 'Registrarse')}</button>
+                        </form>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+export default App;
