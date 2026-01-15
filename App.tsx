@@ -1,47 +1,65 @@
 import React, { useState, useEffect } from 'react';
-import { Search, ShoppingBag, Percent, Tag, Mail, Phone, LogIn, UserPlus, MessageCircle, X, Plus, Package, Settings, LogOut, Save, Image as ImageIcon, UploadCloud } from 'lucide-react';
+import { Search, ShoppingBag, Percent, Tag, Mail, Phone, LogIn, UserPlus, MessageCircle, X, Plus, Package, Settings, LogOut, Save, Image as ImageIcon, UploadCloud, FileText, Edit, Trash2 } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const App: React.FC = () => {
-    // ESTADOS GENERALES
+    // --- ESTADOS ---
     const [searchTerm, setSearchTerm] = useState('');
     const [filtroActivo, setFiltroActivo] = useState<'todos' | 'descuento' | 'garage'>('todos');
     const [productos, setProductos] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [errorMsg, setErrorMsg] = useState('');
     
-    // ESTADOS DE USUARIO
+    // Auth & User
     const [showAuthModal, setShowAuthModal] = useState(false);
     const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [user, setUser] = useState<any>(null);
 
-    // VISTAS
+    // Vistas & Modales
     const [vistaActual, setVistaActual] = useState<'home' | 'panel'>('home');
     const [showPublicarModal, setShowPublicarModal] = useState(false);
+    
+    // ESTADO PARA COTIZACIÓN (PDF)
+    const [productoACotizar, setProductoACotizar] = useState<any>(null);
+    const [datosCotizacion, setDatosCotizacion] = useState({
+        cantidad: 12,
+        rutEmpresa: '',
+        razonSocial: '',
+        emailContacto: '',
+        telefono: ''
+    });
 
-    // ESTADO PARA SUBIDA DE IMAGEN
+    // EDICIÓN
+    const [modoEdicion, setModoEdicion] = useState(false);
+    const [idProductoEditar, setIdProductoEditar] = useState<number | null>(null);
+
+    // Imágenes
     const [archivoImagen, setArchivoImagen] = useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string>('');
     const [procesandoImagen, setProcesandoImagen] = useState(false);
     const [subiendoImagen, setSubiendoImagen] = useState(false);
 
-    // FORMULARIO NUEVO PRODUCTO
+    // Formulario Nuevo/Editar Producto
     const [nuevoProducto, setNuevoProducto] = useState({
         nombre: '',
         precio: '',
         descripcion: '',
         categoria: 'general',
-        descuento: false
+        descuento: false,
+        imagen_url: '' // Para guardar la URL anterior si no se cambia
     });
 
-    // INICIALIZAR SUPABASE
+    // Supabase Config
     const url = "https://dcssdiohhbmbqwuzuhda.supabase.co";
     const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
     const supabase = createClient(url, key || '');
 
-    // FUNCION DE COMPRESION DE IMAGEN (Nativa, sin librerías externas)
+    // --- FUNCIONES AUXILIARES ---
+
     const comprimirImagen = async (file: File): Promise<File> => {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
@@ -51,179 +69,215 @@ const App: React.FC = () => {
                 img.src = event.target?.result as string;
                 img.onload = () => {
                     const canvas = document.createElement('canvas');
-                    const MAX_WIDTH = 1024; // Reducir a máximo 1024px de ancho
+                    const MAX_WIDTH = 1024;
                     const scaleSize = MAX_WIDTH / img.width;
                     const newWidth = (scaleSize < 1) ? MAX_WIDTH : img.width;
                     const newHeight = (scaleSize < 1) ? (img.height * scaleSize) : img.height;
-
                     canvas.width = newWidth;
                     canvas.height = newHeight;
-                    
                     const ctx = canvas.getContext('2d');
                     if (ctx) {
                         ctx.drawImage(img, 0, 0, newWidth, newHeight);
-                        // Comprimir a JPEG con calidad 0.7 (70%)
                         canvas.toBlob((blob) => {
-                            if (blob) {
-                                const newFile = new File([blob], file.name, {
-                                    type: 'image/jpeg',
-                                    lastModified: Date.now(),
-                                });
-                                resolve(newFile);
-                            } else {
-                                reject(new Error("Error al comprimir imagen"));
-                            }
+                            if (blob) resolve(new File([blob], file.name, { type: 'image/jpeg', lastModified: Date.now() }));
+                            else reject(new Error("Error al comprimir"));
                         }, 'image/jpeg', 0.7);
-                    } else {
-                        reject(new Error("No se pudo obtener el contexto del canvas"));
                     }
                 };
-                img.onerror = (error) => reject(error);
             };
         });
     };
 
-    // CARGAR DATOS
     const cargarDatos = async () => {
         setLoading(true);
         try {
             const { data, error } = await supabase.from('productos').select('*').order('created_at', { ascending: false });
             if (error) throw error;
             setProductos(data || []);
-        } catch (err) {
-            console.error("Error cargando productos:", err);
-        } finally {
-            setLoading(false);
-        }
+        } catch (err) { console.error(err); } 
+        finally { setLoading(false); }
     };
 
     useEffect(() => {
         cargarDatos();
         supabase.auth.getSession().then(({ data: { session } }) => {
-            if (session?.user) {
-                setUser(session.user);
-                setVistaActual('panel');
-            }
+            if (session?.user) { setUser(session.user); setVistaActual('panel'); }
         });
         const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
             setUser(session?.user || null);
             if (event === 'SIGNED_IN') setVistaActual('panel');
             if (event === 'SIGNED_OUT') setVistaActual('home');
         });
-        return () => {
-            authListener.subscription.unsubscribe();
-        };
+        return () => { authListener.subscription.unsubscribe(); };
     }, []);
 
-    // MANEJO DE SELECCIÓN DE IMAGEN
     const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
-            const file = e.target.files[0];
             setProcesandoImagen(true);
             try {
-                // Comprimir imagen antes de guardarla en el estado
-                const imagenComprimida = await comprimirImagen(file);
-                setArchivoImagen(imagenComprimida);
-                
-                // Crear preview local
-                const objectUrl = URL.createObjectURL(imagenComprimida);
-                setPreviewUrl(objectUrl);
-            } catch (error) {
-                console.error("Error al procesar imagen", error);
-                alert("Error al procesar la imagen. Intenta con otra.");
-            } finally {
-                setProcesandoImagen(false);
-            }
+                const compressed = await comprimirImagen(e.target.files[0]);
+                setArchivoImagen(compressed);
+                setPreviewUrl(URL.createObjectURL(compressed));
+            } catch (error) { alert("Error en imagen"); } 
+            finally { setProcesandoImagen(false); }
         }
     };
 
     const handleAuth = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
-        setErrorMsg('');
         try {
-            if (authMode === 'login') {
-                const { error } = await supabase.auth.signInWithPassword({ email, password });
-                if (error) throw error;
-                setShowAuthModal(false);
-            } else {
-                const { error } = await supabase.auth.signUp({ email, password });
-                if (error) throw error;
-                alert('¡Registro exitoso! Revisa tu correo.');
-                setShowAuthModal(false);
-            }
-        } catch (error: any) {
-            setErrorMsg(error.message);
-        } finally {
-            setLoading(false);
-        }
+            const { error } = authMode === 'login' 
+                ? await supabase.auth.signInWithPassword({ email, password })
+                : await supabase.auth.signUp({ email, password });
+            if (error) throw error;
+            if (authMode === 'register') alert('Registro exitoso. Revisa tu correo.');
+            setShowAuthModal(false);
+        } catch (error: any) { setErrorMsg(error.message); } 
+        finally { setLoading(false); }
     };
 
-    const handleLogout = async () => {
-        await supabase.auth.signOut();
-        setVistaActual('home');
-    };
-
-    const handlePublicar = async (e: React.FormEvent) => {
+    // --- GUARDAR / EDITAR PRODUCTO ---
+    const handleGuardarProducto = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!user) return;
         setLoading(true);
-
         try {
-            let finalImageUrl = "https://via.placeholder.com/300?text=Sin+Foto";
-
-            // 1. Subir imagen (Ya está comprimida)
+            let finalImageUrl = nuevoProducto.imagen_url || "https://via.placeholder.com/300?text=Sin+Foto";
+            
+            // Si hay NUEVA imagen, la subimos
             if (archivoImagen) {
                 setSubiendoImagen(true);
-                const fileExt = "jpg"; // Siempre convertimos a jpg
-                const fileName = `${Date.now()}.${fileExt}`;
-                const filePath = `${fileName}`;
-
-                const { error: uploadError } = await supabase.storage
-                    .from('imagenes')
-                    .upload(filePath, archivoImagen);
-
-                if (uploadError) throw uploadError;
-
-                const { data: { publicUrl } } = supabase.storage
-                    .from('imagenes')
-                    .getPublicUrl(filePath);
-                
+                const fileName = `${Date.now()}.jpg`;
+                const { error: upErr } = await supabase.storage.from('imagenes').upload(fileName, archivoImagen);
+                if (upErr) throw upErr;
+                const { data: { publicUrl } } = supabase.storage.from('imagenes').getPublicUrl(fileName);
                 finalImageUrl = publicUrl;
                 setSubiendoImagen(false);
             }
+            
+            const precioInt = parseInt(nuevoProducto.precio.toString().replace(/\D/g, '')) || 0;
+            
+            const datosAEnviar = {
+                nombre: nuevoProducto.nombre,
+                descripcion: nuevoProducto.descripcion,
+                precio: precioInt,
+                imagen_url: finalImageUrl,
+                categoria: nuevoProducto.categoria,
+                descuento: nuevoProducto.descuento,
+            };
 
-            // 2. Guardar datos
-            const precioLimpio = parseInt(nuevoProducto.precio.replace(/\D/g, '')) || 0;
-
-            const { error } = await supabase.from('productos').insert([
-                {
-                    nombre: nuevoProducto.nombre,
-                    descripcion: nuevoProducto.descripcion,
-                    precio: precioLimpio,
-                    imagen_url: finalImageUrl,
-                    categoria: nuevoProducto.categoria,
-                    descuento: nuevoProducto.descuento,
-                }
-            ]);
-
-            if (error) throw error;
-
-            alert('¡Producto publicado con éxito!');
-            setShowPublicarModal(false);
-            setNuevoProducto({ nombre: '', precio: '', descripcion: '', categoria: 'general', descuento: false });
-            setArchivoImagen(null);
-            setPreviewUrl('');
-            cargarDatos(); 
-
-        } catch (error: any) {
-            alert('Error al publicar: ' + error.message);
-            setSubiendoImagen(false);
-        } finally {
-            setLoading(false);
-        }
+            if (modoEdicion && idProductoEditar) {
+                // UPDATE (Editar)
+                const { error } = await supabase.from('productos').update(datosAEnviar).eq('id', idProductoEditar);
+                if (error) throw error;
+                alert('¡Producto actualizado correctamente!');
+            } else {
+                // INSERT (Nuevo)
+                const { error } = await supabase.from('productos').insert([datosAEnviar]);
+                if (error) throw error;
+                alert('¡Producto publicado con éxito!');
+            }
+            
+            cerrarModalEdicion();
+            cargarDatos();
+        } catch (error: any) { alert('Error: ' + error.message); } 
+        finally { setLoading(false); }
     };
 
+    const abrirModalEdicion = (prod: any) => {
+        setModoEdicion(true);
+        setIdProductoEditar(prod.id);
+        setNuevoProducto({
+            nombre: prod.nombre,
+            precio: prod.precio,
+            descripcion: prod.descripcion,
+            categoria: prod.categoria,
+            descuento: prod.descuento,
+            imagen_url: prod.imagen_url
+        });
+        setPreviewUrl(prod.imagen_url);
+        setShowPublicarModal(true);
+    };
+
+    const cerrarModalEdicion = () => {
+        setShowPublicarModal(false);
+        setModoEdicion(false);
+        setIdProductoEditar(null);
+        setNuevoProducto({ nombre: '', precio: '', descripcion: '', categoria: 'general', descuento: false, imagen_url: '' });
+        setArchivoImagen(null);
+        setPreviewUrl('');
+    };
+
+    // --- GENERADOR DE PDF ---
+    const generarPDF = () => {
+        if (!productoACotizar) return;
+        const doc = new jsPDF();
+        
+        // Lógica de precio por volumen
+        let precioUnitario = productoACotizar.precio;
+        if (datosCotizacion.cantidad >= 72) {
+             precioUnitario = precioUnitario * 0.85; // 15% desc por mayorista
+        } else if (datosCotizacion.cantidad >= 12) {
+             precioUnitario = precioUnitario * 0.95; // 5% desc
+        }
+        const total = precioUnitario * datosCotizacion.cantidad;
+
+        // Encabezado
+        doc.setFontSize(22);
+        doc.setTextColor(41, 128, 185);
+        doc.text("COTIZACIÓN FORMAL", 105, 20, { align: "center" });
+        doc.text("EL GRAN BAZAR", 105, 30, { align: "center" });
+        
+        doc.setFontSize(12);
+        doc.setTextColor(0,0,0);
+        doc.text(`Fecha: ${new Date().toLocaleDateString()}`, 14, 50);
+        
+        // Datos Cliente
+        doc.setFontSize(14);
+        doc.text("Datos del Cliente (Empresa)", 14, 65);
+        doc.setFontSize(10);
+        doc.text(`Razón Social: ${datosCotizacion.razonSocial}`, 14, 75);
+        doc.text(`RUT: ${datosCotizacion.rutEmpresa}`, 14, 80);
+        doc.text(`Email: ${datosCotizacion.emailContacto}`, 14, 85);
+        doc.text(`Teléfono: ${datosCotizacion.telefono}`, 14, 90);
+
+        // Tabla Productos
+        autoTable(doc, {
+            startY: 100,
+            head: [['Producto', 'Cant.', 'Precio Unit.', 'Total Neto']],
+            body: [
+                [
+                    productoACotizar.nombre, 
+                    datosCotizacion.cantidad, 
+                    `$${precioUnitario.toLocaleString('es-CL')}`, 
+                    `$${total.toLocaleString('es-CL')}`
+                ],
+            ],
+            theme: 'grid',
+            headStyles: { fillColor: [41, 128, 185] }
+        });
+
+        // Totales
+        const finalY = (doc as any).lastAutoTable.finalY + 10;
+        doc.setFontSize(12);
+        doc.text(`Total Neto: $${total.toLocaleString('es-CL')}`, 140, finalY);
+        doc.text(`IVA (19%): $${(total * 0.19).toLocaleString('es-CL')}`, 140, finalY + 7);
+        doc.setFontSize(14);
+        doc.setFont("helvetica", "bold");
+        doc.text(`TOTAL FINAL: $${(total * 1.19).toLocaleString('es-CL')}`, 140, finalY + 15);
+
+        // Pie de página
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        doc.text("Esta cotización es válida por 10 días.", 105, 280, { align: "center" });
+        
+        doc.save(`Cotizacion_${datosCotizacion.rutEmpresa}.pdf`);
+        alert("¡PDF Generado y descargado exitosamente!");
+        setProductoACotizar(null);
+    };
+
+    // --- RENDER ---
     const productosVisibles = productos.filter(p => {
         const coincideBusqueda = p.nombre ? p.nombre.toLowerCase().includes(searchTerm.toLowerCase()) : false;
         let coincideBoton = true;
@@ -234,10 +288,9 @@ const App: React.FC = () => {
 
     return (
         <div className="min-h-screen bg-white font-sans flex flex-col relative">
-            <style>{`
-                .hero-gradient { background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%); }
-            `}</style>
+            <style>{`.hero-gradient { background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%); }`}</style>
 
+            {/* HEADER */}
             <header className="bg-white shadow-md sticky top-0 z-50">
                 <div className="container mx-auto px-4 py-3 flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 cursor-pointer" onClick={() => setVistaActual('home')}>
@@ -246,10 +299,13 @@ const App: React.FC = () => {
                     <div className="flex items-center gap-2 md:gap-4">
                         {user ? (
                             <div className="flex items-center gap-3">
-                                <button onClick={() => setVistaActual(vistaActual === 'home' ? 'panel' : 'home')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-colors ${vistaActual === 'panel' ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100'}`}>
+                                <button 
+                                    onClick={() => setVistaActual(vistaActual === 'home' ? 'panel' : 'home')}
+                                    className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-colors cursor-pointer border ${vistaActual === 'panel' ? 'bg-blue-100 text-blue-700 border-blue-200' : 'text-gray-600 hover:bg-gray-100 border-transparent'}`}
+                                >
                                     {vistaActual === 'home' ? 'Ir a mi Panel' : 'Ver Tienda'}
                                 </button>
-                                <button onClick={handleLogout} className="flex items-center gap-1 text-red-500 text-sm font-bold hover:bg-red-50 px-3 py-2 rounded-lg">
+                                <button onClick={async () => { await supabase.auth.signOut(); setVistaActual('home'); }} className="flex items-center gap-1 text-red-500 text-sm font-bold hover:bg-red-50 px-3 py-2 rounded-lg">
                                     <LogOut className="w-4 h-4" /> <span className="hidden md:inline">Salir</span>
                                 </button>
                             </div>
@@ -263,37 +319,40 @@ const App: React.FC = () => {
                 </div>
             </header>
 
+            {/* MAIN */}
             <main className="flex-grow">
                 {vistaActual === 'panel' && user ? (
+                    // VISTA PANEL
                     <div className="container mx-auto px-4 py-8">
                         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-                            <div><h1 className="text-3xl font-black text-gray-800">Panel de Control</h1><p className="text-gray-500">Gestiona tus productos</p></div>
-                            <button onClick={() => setShowPublicarModal(true)} className="bg-green-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg hover:bg-green-700 transition-all flex items-center gap-2">
-                                <Plus className="w-5 h-5" /> Publicar Nuevo Producto
+                            <div><h1 className="text-3xl font-black text-gray-800">Panel de Control</h1><p className="text-gray-500">Hola, {user.email}</p></div>
+                            <button onClick={() => { cerrarModalEdicion(); setShowPublicarModal(true); }} className="bg-green-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg hover:bg-green-700 transition-all flex items-center gap-2">
+                                <Plus className="w-5 h-5" /> Nuevo Producto
                             </button>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-                            <div className="bg-blue-50 p-6 rounded-2xl border border-blue-100 flex items-center gap-4">
-                                <div className="p-3 bg-blue-500 text-white rounded-lg"><Package className="w-6 h-6"/></div>
-                                <div><p className="text-sm text-blue-600 font-bold">Mis Productos</p><p className="text-2xl font-black text-gray-800">{productos.length}</p></div>
-                            </div>
-                        </div>
+                        {/* Tabla Inventario */}
                         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-                            <div className="p-6 border-b border-gray-100"><h2 className="text-lg font-bold text-gray-800">Inventario</h2></div>
                             <div className="overflow-x-auto">
                                 <table className="w-full text-left">
                                     <thead className="bg-gray-50 text-gray-600 font-bold text-sm uppercase">
-                                        <tr><th className="p-4">Producto</th><th className="p-4">Precio</th><th className="p-4">Categoría</th></tr>
+                                        <tr><th className="p-4">Producto</th><th className="p-4">Precio</th><th className="p-4 text-right">Acciones</th></tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-100">
                                         {productos.map((prod) => (
-                                            <tr key={prod.id} className="hover:bg-gray-50 transition-colors">
+                                            <tr key={prod.id} className="hover:bg-gray-50">
                                                 <td className="p-4 flex items-center gap-3">
                                                     <img src={prod.imagen_url} className="w-10 h-10 rounded-lg object-cover bg-gray-200"/>
                                                     <span className="font-medium text-gray-800">{prod.nombre}</span>
                                                 </td>
-                                                <td className="p-4 text-gray-600 font-bold">${prod.precio?.toLocaleString('es-CL')}</td>
-                                                <td className="p-4"><span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-bold uppercase">{prod.categoria}</span></td>
+                                                <td className="p-4 font-bold text-gray-600">${prod.precio?.toLocaleString('es-CL')}</td>
+                                                <td className="p-4 text-right">
+                                                    <button 
+                                                        onClick={() => abrirModalEdicion(prod)}
+                                                        className="bg-blue-50 text-blue-600 px-3 py-1 rounded-lg text-sm font-bold hover:bg-blue-100 border border-blue-200 transition-colors"
+                                                    >
+                                                        Editar
+                                                    </button>
+                                                </td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -302,6 +361,7 @@ const App: React.FC = () => {
                         </div>
                     </div>
                 ) : (
+                    // VISTA TIENDA (HOME)
                     <div className="container mx-auto px-4 py-8">
                         <div className="hero-gradient text-center p-8 md:p-16 text-white rounded-3xl shadow-2xl mb-12">
                             <h1 className="text-4xl md:text-6xl font-black mb-6 leading-tight">Bienvenido a <br/> El Gran Bazar</h1>
@@ -314,10 +374,14 @@ const App: React.FC = () => {
                                 <button onClick={() => setFiltroActivo(filtroActivo === 'garage' ? 'todos' : 'garage')} className={`flex items-center gap-2 font-bold py-3 px-8 rounded-xl transition-all shadow-lg ${filtroActivo === 'garage' ? 'bg-white text-orange-600' : 'bg-orange-500 text-white'}`}><Tag className="w-5 h-5"/> Garage</button>
                             </div>
                         </div>
+                        
                         {loading ? <div className="text-center py-20">Cargando...</div> : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                                 {productosVisibles.map((producto) => (
-                                    <div key={producto.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-2xl transition-all duration-300 group">
+                                    <div 
+                                        key={producto.id} 
+                                        className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-2xl transition-all duration-300 group"
+                                    >
                                         <div className="h-64 bg-gray-200 relative overflow-hidden">
                                             <img src={producto.imagen_url} alt={producto.nombre} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"/>
                                             {producto.descuento && <span className="absolute top-4 right-4 bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg">OFERTA</span>}
@@ -327,7 +391,12 @@ const App: React.FC = () => {
                                             <h3 className="text-xl font-bold text-gray-800 mb-2">{producto.nombre}</h3>
                                             <div className="flex items-center justify-between mt-4">
                                                 <span className="text-2xl font-black text-blue-600">${producto.precio?.toLocaleString('es-CL')}</span>
-                                                <button className="p-2 bg-blue-50 text-blue-600 rounded-full"><ShoppingBag className="w-5 h-5"/></button>
+                                                <button 
+                                                    onClick={() => setProductoACotizar(producto)}
+                                                    className="px-4 py-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 font-bold text-sm shadow-md transition-all flex items-center gap-2"
+                                                >
+                                                    <FileText className="w-4 h-4"/> Cotizar
+                                                </button>
                                             </div>
                                         </div>
                                     </div>
@@ -338,63 +407,82 @@ const App: React.FC = () => {
                 )}
             </main>
 
+            {/* MODAL: COTIZACIÓN FORMAL (B2B) */}
+            {productoACotizar && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg p-8 relative animate-fade-in overflow-y-auto max-h-[90vh]">
+                        <button onClick={() => setProductoACotizar(null)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><X className="w-6 h-6" /></button>
+                        <h2 className="text-2xl font-black text-gray-800 mb-2">Solicitud de Cotización</h2>
+                        <p className="text-gray-500 mb-6 text-sm">Ingresa los datos de tu empresa para generar el PDF formal.</p>
+                        
+                        <div className="bg-blue-50 p-4 rounded-xl mb-6 border border-blue-100 flex items-center gap-4">
+                            <img src={productoACotizar.imagen_url} className="w-16 h-16 rounded-lg object-cover bg-white"/>
+                            <div>
+                                <p className="font-bold text-gray-800">{productoACotizar.nombre}</p>
+                                <p className="text-blue-600 font-bold">${productoACotizar.precio.toLocaleString('es-CL')}</p>
+                            </div>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div><label className="text-xs font-bold text-gray-600 uppercase">Cantidad</label><input type="number" min="1" value={datosCotizacion.cantidad} onChange={e => setDatosCotizacion({...datosCotizacion, cantidad: parseInt(e.target.value) || 0})} className="w-full p-3 border rounded-xl"/></div>
+                                <div><label className="text-xs font-bold text-gray-600 uppercase">RUT Empresa</label><input type="text" value={datosCotizacion.rutEmpresa} onChange={e => setDatosCotizacion({...datosCotizacion, rutEmpresa: e.target.value})} className="w-full p-3 border rounded-xl" placeholder="76.xxx.xxx-k"/></div>
+                            </div>
+                            <div><label className="text-xs font-bold text-gray-600 uppercase">Razón Social</label><input type="text" value={datosCotizacion.razonSocial} onChange={e => setDatosCotizacion({...datosCotizacion, razonSocial: e.target.value})} className="w-full p-3 border rounded-xl" placeholder="Nombre de tu empresa"/></div>
+                            <div><label className="text-xs font-bold text-gray-600 uppercase">Email Contacto</label><input type="email" value={datosCotizacion.emailContacto} onChange={e => setDatosCotizacion({...datosCotizacion, emailContacto: e.target.value})} className="w-full p-3 border rounded-xl"/></div>
+                            <div><label className="text-xs font-bold text-gray-600 uppercase">Teléfono</label><input type="tel" value={datosCotizacion.telefono} onChange={e => setDatosCotizacion({...datosCotizacion, telefono: e.target.value})} className="w-full p-3 border rounded-xl"/></div>
+                            
+                            <div className="bg-yellow-50 p-3 rounded-lg text-xs text-yellow-800 border border-yellow-200">
+                                💡 <strong>Descuentos Automáticos:</strong> 5% sobre 12 unidades, 15% sobre 72 unidades.
+                            </div>
+
+                            <button onClick={generarPDF} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg flex items-center justify-center gap-2 text-lg transition-all">
+                                <FileText className="w-6 h-6"/> Generar PDF Formal
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL: PUBLICAR / EDITAR PRODUCTO */}
             {showPublicarModal && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-8 relative animate-fade-in overflow-y-auto max-h-[90vh]">
-                        <button onClick={() => setShowPublicarModal(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><X className="w-6 h-6" /></button>
-                        <h2 className="text-2xl font-black text-gray-800 mb-6">Publicar Producto</h2>
+                        <button onClick={cerrarModalEdicion} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><X className="w-6 h-6" /></button>
+                        <h2 className="text-2xl font-black text-gray-800 mb-6">{modoEdicion ? 'Editar Producto' : 'Publicar Nuevo Producto'}</h2>
                         
-                        <form onSubmit={handlePublicar} className="space-y-4">
+                        <form onSubmit={handleGuardarProducto} className="space-y-4">
                             <div><label className="block text-sm font-bold text-gray-700 mb-1">Nombre</label><input type="text" required value={nuevoProducto.nombre} onChange={e => setNuevoProducto({...nuevoProducto, nombre: e.target.value})} className="w-full p-3 border rounded-xl" placeholder="Ej: Mesa"/></div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div><label className="block text-sm font-bold text-gray-700 mb-1">Precio</label><input type="number" required value={nuevoProducto.precio} onChange={e => setNuevoProducto({...nuevoProducto, precio: e.target.value})} className="w-full p-3 border rounded-xl" placeholder="50000"/></div>
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">Categoría</label>
-                                    <select value={nuevoProducto.categoria} onChange={e => setNuevoProducto({...nuevoProducto, categoria: e.target.value})} className="w-full p-3 border rounded-xl bg-white">
-                                        <option value="general">Nuevo</option>
-                                        <option value="garage">Garage (Usado)</option>
-                                    </select>
-                                </div>
+                                <div><label className="block text-sm font-bold text-gray-700 mb-1">Categoría</label><select value={nuevoProducto.categoria} onChange={e => setNuevoProducto({...nuevoProducto, categoria: e.target.value})} className="w-full p-3 border rounded-xl bg-white"><option value="general">Nuevo</option><option value="garage">Garage (Usado)</option></select></div>
                             </div>
-
-                            {/* ZONA DE SUBIDA CON COMPRESOR */}
+                            
                             <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">Foto (Se optimiza auto.)</label>
+                                <label className="block text-sm font-bold text-gray-700 mb-1">Foto {modoEdicion && '(Sube otra para cambiarla)'}</label>
                                 <div className="border-2 border-dashed border-gray-300 rounded-xl p-4 text-center hover:bg-gray-50 transition-colors cursor-pointer relative">
                                     <input type="file" accept="image/*" onChange={handleImageSelect} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"/>
                                     <div className="flex flex-col items-center justify-center text-gray-500">
-                                        {procesandoImagen ? (
-                                            <span className="text-blue-500 font-bold animate-pulse">⏳ Optimizando imagen...</span>
-                                        ) : previewUrl ? (
-                                            <div className="relative w-full h-32">
-                                                <img src={previewUrl} className="w-full h-full object-contain rounded-lg"/>
-                                                <span className="absolute bottom-0 bg-black/50 text-white text-xs px-2 py-1 rounded">Lista para subir</span>
-                                            </div>
-                                        ) : (
-                                            <>
-                                                <UploadCloud className="w-8 h-8 mb-2 text-blue-400" />
-                                                <span className="font-medium text-sm">Toca para subir foto</span>
-                                            </>
-                                        )}
+                                        {procesandoImagen ? <span className="animate-pulse text-blue-500">Optimizando...</span> : previewUrl ? <img src={previewUrl} className="h-32 object-contain rounded"/> : <div className="flex flex-col items-center"><UploadCloud className="w-8 h-8 text-gray-400"/><span className="text-sm">Toca para subir</span></div>}
                                     </div>
                                 </div>
                             </div>
 
                             <div><label className="block text-sm font-bold text-gray-700 mb-1">Descripción</label><textarea rows={3} value={nuevoProducto.descripcion} onChange={e => setNuevoProducto({...nuevoProducto, descripcion: e.target.value})} className="w-full p-3 border rounded-xl" placeholder="Detalles..."/></div>
                             <div className="flex items-center gap-2"><input type="checkbox" id="desc" checked={nuevoProducto.descuento} onChange={e => setNuevoProducto({...nuevoProducto, descuento: e.target.checked})} className="w-5 h-5 text-blue-600 rounded"/><label htmlFor="desc" className="text-gray-700 font-medium">¿Oferta?</label></div>
-                            <button type="submit" disabled={loading || procesandoImagen} className="w-full bg-green-600 text-white font-bold py-3 rounded-xl hover:bg-green-700 transition-all shadow-lg flex justify-center items-center gap-2">
-                                <Save className="w-5 h-5"/> {loading || subiendoImagen ? 'Subiendo...' : 'Publicar Ahora'}
-                            </button>
+                            <button type="submit" disabled={loading || procesandoImagen} className="w-full bg-green-600 text-white font-bold py-3 rounded-xl hover:bg-green-700 transition-all shadow-lg flex justify-center items-center gap-2"><Save className="w-5 h-5"/> {loading || subiendoImagen ? 'Guardando...' : (modoEdicion ? 'Actualizar Producto' : 'Publicar Ahora')}</button>
                         </form>
                     </div>
                 </div>
             )}
 
+            {/* MODAL: LOGIN */}
             {showAuthModal && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 relative">
                         <button onClick={() => setShowAuthModal(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><X className="w-6 h-6" /></button>
                         <h2 className="text-2xl font-black text-blue-800 mb-6 text-center">{authMode === 'login' ? 'Bienvenido' : 'Crear Cuenta'}</h2>
+                        {errorMsg && <div className="bg-red-50 text-red-600 p-3 rounded mb-4 text-sm">{errorMsg}</div>}
                         <form onSubmit={handleAuth} className="space-y-4">
                             <div><label className="text-sm font-bold text-gray-700">Correo</label><input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full p-3 border rounded-xl"/></div>
                             <div><label className="text-sm font-bold text-gray-700">Contraseña</label><input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="w-full p-3 border rounded-xl"/></div>
