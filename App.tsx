@@ -165,10 +165,12 @@ const App: React.FC = () => {
             };
 
             if (modoEdicion && idProductoEditar) {
+                // UPDATE (Editar)
                 const { error } = await supabase.from('productos').update(datosAEnviar).eq('id', idProductoEditar);
                 if (error) throw error;
                 alert('¡Producto actualizado correctamente!');
             } else {
+                // INSERT (Nuevo)
                 const { error } = await supabase.from('productos').insert([datosAEnviar]);
                 if (error) throw error;
                 alert('¡Producto publicado con éxito!');
@@ -203,7 +205,7 @@ const App: React.FC = () => {
         setPreviewUrl('');
     };
 
-    // --- GENERADOR DE PDF CORREGIDO (Lógica Chilena) ---
+    // --- GENERADOR DE PDF ---
     const generarPDF = () => {
         if (!productoACotizar) return;
         const doc = new jsPDF();
@@ -484,3 +486,39 @@ const App: React.FC = () => {
                             
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 mb-1">Foto {modoEdicion && '(Sube otra para cambiarla)'}</label>
+                                <div className="border-2 border-dashed border-gray-300 rounded-xl p-4 text-center hover:bg-gray-50 transition-colors cursor-pointer relative">
+                                    <input type="file" accept="image/*" onChange={handleImageSelect} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"/>
+                                    <div className="flex flex-col items-center justify-center text-gray-500">
+                                        {procesandoImagen ? <span className="animate-pulse text-blue-500">Optimizando...</span> : previewUrl ? <img src={previewUrl} className="h-32 object-contain rounded"/> : <div className="flex flex-col items-center"><UploadCloud className="w-8 h-8 text-gray-400"/><span className="text-sm">Toca para subir</span></div>}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div><label className="block text-sm font-bold text-gray-700 mb-1">Descripción</label><textarea rows={3} value={nuevoProducto.descripcion} onChange={e => setNuevoProducto({...nuevoProducto, descripcion: e.target.value})} className="w-full p-3 border rounded-xl" placeholder="Detalles..."/></div>
+                            
+                            <button type="submit" disabled={loading || procesandoImagen} className="w-full bg-green-600 text-white font-bold py-3 rounded-xl hover:bg-green-700 transition-all shadow-lg flex justify-center items-center gap-2"><Save className="w-5 h-5"/> {loading || subiendoImagen ? 'Guardando...' : (modoEdicion ? 'Actualizar Producto' : 'Publicar Ahora')}</button>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL: LOGIN */}
+            {showAuthModal && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 relative">
+                        <button onClick={() => setShowAuthModal(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><X className="w-6 h-6" /></button>
+                        <h2 className="text-2xl font-black text-blue-800 mb-6 text-center">{authMode === 'login' ? 'Bienvenido' : 'Crear Cuenta'}</h2>
+                        {errorMsg && <div className="bg-red-50 text-red-600 p-3 rounded mb-4 text-sm">{errorMsg}</div>}
+                        <form onSubmit={handleAuth} className="space-y-4">
+                            <div><label className="text-sm font-bold text-gray-700">Correo</label><input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full p-3 border rounded-xl"/></div>
+                            <div><label className="text-sm font-bold text-gray-700">Contraseña</label><input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="w-full p-3 border rounded-xl"/></div>
+                            <button type="submit" className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700">{loading ? '...' : (authMode === 'login' ? 'Ingresar' : 'Registrarse')}</button>
+                        </form>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+export default App;
