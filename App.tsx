@@ -13,11 +13,10 @@ const App: React.FC = () => {
         const iniciarBazar = async () => {
             setLoading(true);
             
-            // ✅ AQUÍ ESTÁ EL CAMBIO CLAVE:
-            // He puesto directamente la dirección de tu NUEVO proyecto (EL GRAN BAZAR / dcss...)
+            // ✅ DIRECCIÓN DEL PROYECTO NUEVO (EL GRAN BAZAR)
             const url = "https://dcssdiohhbmbqwuzuhda.supabase.co";
 
-            // La llave la toma de Netlify (que ya configuraste hace un momento)
+            // La llave la toma de Netlify
             const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
             if (!key) {
@@ -185,4 +184,31 @@ const App: React.FC = () => {
                 )}
             </main>
 
-            {/* CH
+            {/* CHAT FLOTANTE */}
+            <button 
+                className="fixed bottom-6 right-6 antü-gold text-white p-4 rounded-full shadow-2xl hover:scale-110 transition-all flex items-center gap-3 z-50"
+                onClick={() => alert('¡Hola! Soy Antü, tu asistente virtual.')}
+            >
+                <MessageCircle className="w-6 h-6" />
+                <span className="font-bold hidden md:inline">Chat con Antü</span>
+            </button>
+
+            {/* FOOTER */}
+            <footer className="bg-[#2D3748] text-gray-400 mt-12 py-8">
+                <div className="container mx-auto px-4 text-center">
+                    <p>&copy; 2025 El Gran Bazar. Todos los derechos reservados.</p>
+                    <div className="mt-4 flex justify-center gap-6">
+                        <div className="flex items-center gap-2 hover:text-white cursor-pointer">
+                            <Mail className="w-4 h-4" /> <span>Contacto</span>
+                        </div>
+                        <div className="flex items-center gap-2 hover:text-white cursor-pointer">
+                            <Phone className="w-4 h-4" /> <span>Soporte</span>
+                        </div>
+                    </div>
+                </div>
+            </footer>
+        </div>
+    );
+};
+
+export default App;
