@@ -13,10 +13,8 @@ const App: React.FC = () => {
         const iniciarBazar = async () => {
             setLoading(true);
             
-            // ✅ DIRECCIÓN DEL PROYECTO NUEVO (EL GRAN BAZAR)
+            // ✅ CONEXIÓN A "EL GRAN BAZAR"
             const url = "https://dcssdiohhbmbqwuzuhda.supabase.co";
-
-            // La llave la toma de Netlify
             const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
             if (!key) {
@@ -62,7 +60,7 @@ const App: React.FC = () => {
             <header className="bg-white shadow-md sticky top-0 z-50">
                 <div className="container mx-auto px-4 py-3 flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 cursor-pointer shrink-0" onClick={() => {setFiltroActivo('todos'); setSearchTerm('');}}>
-                        {/* Logo o Texto */}
+                        {/* Logo / Título */}
                         <span className="text-xl md:text-2xl font-black text-blue-800 tracking-tight uppercase">
                             EL GRAN BAZAR
                         </span>
@@ -151,7 +149,6 @@ const App: React.FC = () => {
                         {productosVisibles.map((producto) => (
                             <div key={producto.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-2xl transition-all duration-300 group">
                                 <div className="h-64 bg-gray-200 relative overflow-hidden">
-                                    {/* Imagen con fallback si no existe */}
                                     <img 
                                         src={producto.imagen_url || "https://images.unsplash.com/photo-1557821552-17105176677c?w=500&q=80"} 
                                         alt={producto.nombre}
@@ -193,17 +190,25 @@ const App: React.FC = () => {
                 <span className="font-bold hidden md:inline">Chat con Antü</span>
             </button>
 
-            {/* FOOTER */}
-            <footer className="bg-[#2D3748] text-gray-400 mt-12 py-8">
-                <div className="container mx-auto px-4 text-center">
-                    <p>&copy; 2025 El Gran Bazar. Todos los derechos reservados.</p>
-                    <div className="mt-4 flex justify-center gap-6">
-                        <div className="flex items-center gap-2 hover:text-white cursor-pointer">
-                            <Mail className="w-4 h-4" /> <span>Contacto</span>
-                        </div>
-                        <div className="flex items-center gap-2 hover:text-white cursor-pointer">
-                            <Phone className="w-4 h-4" /> <span>Soporte</span>
-                        </div>
+            {/* FOOTER CORREGIDO Y DETALLADO */}
+            <footer className="bg-[#2D3748] text-gray-400 mt-12">
+                <div className="container mx-auto py-8 px-4">
+                    {/* Copyright y Slogan */}
+                    <div className="text-center text-sm border-b border-gray-700 pb-6">
+                        <p>&copy; 2025 - {new Date().getFullYear()} El Gran Bazar. Todos los derechos reservados.</p>
+                        <p className="mt-1 font-semibold text-blue-400">Pymes y Microempresas a un Click</p>
+                    </div>
+                    
+                    {/* Datos de Contacto */}
+                    <div className="mt-6 flex justify-center items-center space-x-8 text-sm flex-wrap">
+                        <a href="mailto:microempresasaunclick@gmail.com" className="flex items-center space-x-2 hover:text-white transition-colors my-2">
+                            <Mail className="h-5 w-5 text-blue-400" />
+                            <span>microempresasaunclick@gmail.com</span>
+                        </a>
+                        <a href="tel:+56931761901" className="flex items-center space-x-2 hover:text-white transition-colors my-2">
+                            <Phone className="h-5 w-5 text-green-400" />
+                            <span>+569-31761901 / +569-47436919</span>
+                        </a>
                     </div>
                 </div>
             </footer>
