@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, ShoppingBag, Store, Percent, Tag, Mail, Phone, LogIn, UserPlus, MessageCircle } from 'lucide-react';
+import { Search, ShoppingBag, Percent, Tag, Mail, Phone, LogIn, UserPlus, MessageCircle, X } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 
 const App: React.FC = () => {
@@ -8,17 +8,22 @@ const App: React.FC = () => {
     const [productos, setProductos] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [errorMsg, setErrorMsg] = useState('');
+    
+    // ESTADOS PARA EL LOGIN/REGISTRO
+    const [showAuthModal, setShowAuthModal] = useState(false);
+    const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [user, setUser] = useState<any>(null);
+
+    // Inicializar Supabase
+    const url = "https://dcssdiohhbmbqwuzuhda.supabase.co";
+    const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    const supabase = createClient(url, key || '');
 
     useEffect(() => {
         const iniciarBazar = async () => {
             setLoading(true);
-            
-            // ✅ CONEXIÓN A "EL GRAN BAZAR" (Proyecto Nuevo)
-            const url = "https://dcssdiohhbmbqwuzuhda.supabase.co";
-            
-            // La llave se toma de Netlify
-            const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
             if (!key) {
                 setErrorMsg("Falta la llave de seguridad en Netlify.");
                 setLoading(false);
@@ -26,20 +31,62 @@ const App: React.FC = () => {
             }
 
             try {
-                const supabase = createClient(url, key);
+                // Cargar productos
                 const { data, error } = await supabase.from('productos').select('*');
-                
                 if (error) throw error;
                 setProductos(data || []);
+
+                // Revisar si ya hay usuario conectado
+                const { data: { session } } = await supabase.auth.getSession();
+                setUser(session?.user || null);
+
             } catch (err: any) {
                 console.error("Error:", err);
-                setErrorMsg("Hubo un problema cargando los productos.");
+                setErrorMsg("Hubo un problema cargando los datos.");
             }
             setLoading(false);
         };
 
         iniciarBazar();
+
+        // Escuchar cambios en la sesión (Login/Logout)
+        const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+            setUser(session?.user || null);
+        });
+
+        return () => {
+            authListener.subscription.unsubscribe();
+        };
     }, []);
+
+    // FUNCIÓN PARA MANEJAR EL LOGIN / REGISTRO
+    const handleAuth = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+        setErrorMsg('');
+
+        try {
+            if (authMode === 'login') {
+                const { error } = await supabase.auth.signInWithPassword({ email, password });
+                if (error) throw error;
+                setShowAuthModal(false); // Cerrar modal al entrar
+            } else {
+                const { error } = await supabase.auth.signUp({ email, password });
+                if (error) throw error;
+                alert('¡Registro exitoso! Revisa tu correo para confirmar.');
+                setShowAuthModal(false);
+            }
+        } catch (error: any) {
+            setErrorMsg(error.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleLogout = async () => {
+        await supabase.auth.signOut();
+        alert('Sesión cerrada correctamente');
+    };
 
     // Lógica de Filtros
     const productosVisibles = productos.filter(p => {
@@ -51,7 +98,6 @@ const App: React.FC = () => {
     });
 
     return (
-        // ✅ FONDO BLANCO PURO (bg-white)
         <div className="min-h-screen bg-white font-sans flex flex-col relative">
             <style>{`
                 .hero-gradient { background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%); }
@@ -63,27 +109,44 @@ const App: React.FC = () => {
             <header className="bg-white shadow-md sticky top-0 z-50">
                 <div className="container mx-auto px-4 py-3 flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 cursor-pointer shrink-0" onClick={() => {setFiltroActivo('todos'); setSearchTerm('');}}>
-                        {/* AQUÍ VA EL LOGO
-                           Si tienes la URL de la imagen, cambia este <span> por la etiqueta <img>
-                        */}
                         <span className="text-xl md:text-2xl font-black text-blue-800 tracking-tight uppercase">
                             EL GRAN BAZAR
                         </span>
                     </div>
 
                     <div className="flex items-center gap-2 md:gap-4">
-                        <button className="flex items-center gap-1 text-blue-600 hover:bg-blue-50 px-3 py-2 rounded-lg transition-colors text-sm font-bold border border-blue-100">
-                            <LogIn className="w-4 h-4" />
-                            <span>Entrar</span>
-                        </button>
-                        <button className="flex items-center gap-1 bg-blue-600 text-white hover:bg-blue-700 px-3 py-2 rounded-lg transition-all text-sm font-bold shadow-sm">
-                            <UserPlus className="w-4 h-4" />
-                            <span className="hidden xs:inline">Registrarse</span>
-                        </button>
+                        {user ? (
+                            // SI EL USUARIO ESTÁ LOGUEADO
+                            <div className="flex items-center gap-3">
+                                <span className="text-sm font-bold text-gray-700 hidden md:block">Hola, {user.email?.split('@')[0]}</span>
+                                <button onClick={handleLogout} className="text-red-500 text-sm font-bold hover:underline">
+                                    Salir
+                                </button>
+                            </div>
+                        ) : (
+                            // SI NO ESTÁ LOGUEADO (BOTONES ACTIVADOS)
+                            <>
+                                <button 
+                                    onClick={() => { setAuthMode('login'); setShowAuthModal(true); }}
+                                    className="flex items-center gap-1 text-blue-600 hover:bg-blue-50 px-3 py-2 rounded-lg transition-colors text-sm font-bold border border-blue-100"
+                                >
+                                    <LogIn className="w-4 h-4" />
+                                    <span>Entrar</span>
+                                </button>
+                                <button 
+                                    onClick={() => { setAuthMode('register'); setShowAuthModal(true); }}
+                                    className="flex items-center gap-1 bg-blue-600 text-white hover:bg-blue-700 px-3 py-2 rounded-lg transition-all text-sm font-bold shadow-sm"
+                                >
+                                    <UserPlus className="w-4 h-4" />
+                                    <span className="hidden xs:inline">Registrarse</span>
+                                </button>
+                            </>
+                        )}
                     </div>
                 </div>
             </header>
 
+            {/* MAIN CONTENT */}
             <main className="container mx-auto px-4 py-8 flex-grow">
                 {/* HERO SECTION */}
                 <div className="hero-gradient text-center p-8 md:p-16 text-white rounded-3xl shadow-2xl mb-12">
@@ -106,7 +169,7 @@ const App: React.FC = () => {
                         />
                     </div>
 
-                    {/* BOTONES DE FILTRO */}
+                    {/* FILTROS */}
                     <div className="flex flex-wrap justify-center gap-4">
                         <button 
                             onClick={() => setFiltroActivo(filtroActivo === 'descuento' ? 'todos' : 'descuento')}
@@ -130,21 +193,19 @@ const App: React.FC = () => {
                     </div>
                 </div>
 
-                {/* TÍTULO DE SECCIÓN */}
                 <div className="text-center mb-8">
                     <h2 className="text-2xl font-bold text-gray-800 capitalize">
                         {filtroActivo === 'todos' ? 'Novedades' : `Sección: ${filtroActivo}`}
                     </h2>
-                    
-                    {errorMsg && (
+                    {errorMsg && !showAuthModal && (
                         <div className="bg-red-50 text-red-600 p-4 rounded-xl mt-4 max-w-lg mx-auto border border-red-200">
                             ⚠️ {errorMsg}
                         </div>
                     )}
                 </div>
 
-                {/* GRILLA DE PRODUCTOS */}
-                {loading ? (
+                {/* GRILLA PRODUCTOS */}
+                {loading && !showAuthModal ? (
                     <div className="text-center py-20">
                         <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-blue-600 mx-auto mb-4"></div>
                         <p className="text-gray-500 font-bold">Cargando catálogo...</p>
@@ -154,7 +215,6 @@ const App: React.FC = () => {
                         {productosVisibles.map((producto) => (
                             <div key={producto.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-2xl transition-all duration-300 group">
                                 <div className="h-64 bg-gray-200 relative overflow-hidden">
-                                    {/* Imagen con fallback */}
                                     <img 
                                         src={producto.imagen_url || "https://images.unsplash.com/photo-1557821552-17105176677c?w=500&q=80"} 
                                         alt={producto.nombre}
@@ -196,16 +256,93 @@ const App: React.FC = () => {
                 <span className="font-bold hidden md:inline">Chat con Antü</span>
             </button>
 
-            {/* FOOTER OFICIAL CON CONTACTO */}
+            {/* MODAL DE LOGIN / REGISTRO */}
+            {showAuthModal && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 relative animate-fade-in">
+                        <button 
+                            onClick={() => setShowAuthModal(false)}
+                            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+                        >
+                            <X className="w-6 h-6" />
+                        </button>
+
+                        <div className="text-center mb-6">
+                            <h2 className="text-2xl font-black text-blue-800 mb-2">
+                                {authMode === 'login' ? 'Bienvenido de nuevo' : 'Crea tu cuenta'}
+                            </h2>
+                            <p className="text-gray-500">
+                                {authMode === 'login' 
+                                    ? 'Ingresa tus datos para continuar' 
+                                    : 'Únete a El Gran Bazar gratis'}
+                            </p>
+                        </div>
+
+                        {errorMsg && (
+                            <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg mb-4 border border-red-200">
+                                {errorMsg}
+                            </div>
+                        )}
+
+                        <form onSubmit={handleAuth} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-1">Correo Electrónico</label>
+                                <div className="relative">
+                                    <Mail className="absolute left-3 top-3 text-gray-400 w-5 h-5" />
+                                    <input 
+                                        type="email" 
+                                        required
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                        className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
+                                        placeholder="ejemplo@correo.com"
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-1">Contraseña</label>
+                                <div className="relative">
+                                    <LogIn className="absolute left-3 top-3 text-gray-400 w-5 h-5" />
+                                    <input 
+                                        type="password" 
+                                        required
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
+                                        placeholder="******"
+                                        minLength={6}
+                                    />
+                                </div>
+                            </div>
+
+                            <button 
+                                type="submit" 
+                                disabled={loading}
+                                className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {loading ? 'Procesando...' : (authMode === 'login' ? 'Ingresar' : 'Registrarse')}
+                            </button>
+                        </form>
+
+                        <div className="mt-6 text-center text-sm text-gray-500">
+                            {authMode === 'login' ? (
+                                <p>¿No tienes cuenta? <button onClick={() => setAuthMode('register')} className="text-blue-600 font-bold hover:underline">Regístrate aquí</button></p>
+                            ) : (
+                                <p>¿Ya tienes cuenta? <button onClick={() => setAuthMode('login')} className="text-blue-600 font-bold hover:underline">Ingresa aquí</button></p>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* FOOTER */}
             <footer className="bg-[#2D3748] text-gray-400 mt-12">
                 <div className="container mx-auto py-8 px-4">
-                    {/* Copyright y Slogan */}
                     <div className="text-center text-sm border-b border-gray-700 pb-6">
-                        <p>&copy; 2025 - {new Date().getFullYear()} El Gran Bazar. Todos los derechos reservados.</p>
+                        <p>&copy; 2025 - El Gran Bazar. Todos los derechos reservados.</p>
                         <p className="mt-1 font-semibold text-blue-400">Pymes y Microempresas a un Click</p>
                     </div>
-                    
-                    {/* Datos de Contacto */}
                     <div className="mt-6 flex justify-center items-center space-x-8 text-sm flex-wrap">
                         <a href="mailto:microempresasaunclick@gmail.com" className="flex items-center space-x-2 hover:text-white transition-colors my-2">
                             <Mail className="h-5 w-5 text-blue-400" />
@@ -213,7 +350,7 @@ const App: React.FC = () => {
                         </a>
                         <a href="tel:+56931761901" className="flex items-center space-x-2 hover:text-white transition-colors my-2">
                             <Phone className="h-5 w-5 text-green-400" />
-                            <span>+569-31761901 / +569-47436919</span>
+                            <span>+569-31761901</span>
                         </a>
                     </div>
                 </div>
