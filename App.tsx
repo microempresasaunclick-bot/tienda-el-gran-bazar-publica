@@ -80,6 +80,7 @@ const App: React.FC = () => {
         setRegDireccion('');
         setRegLogo(null);
         setRegLogoPreview('');
+        setErrorMsg('');
     };
 
     const comprimirImagen = async (file: File): Promise<File> => {
@@ -167,7 +168,7 @@ const App: React.FC = () => {
             if (authMode === 'login') {
                 const { error } = await supabase.auth.signInWithPassword({ email, password });
                 if (error) throw error;
-                limpiarFormularioRegistro(); // Limpiar al entrar
+                limpiarFormularioRegistro(); 
                 setShowAuthModal(false);
             } else {
                 // REGISTRO CON DATOS EMPRESARIALES
@@ -200,7 +201,7 @@ const App: React.FC = () => {
                 }
 
                 alert('¡Registro exitoso! Bienvenido a El Gran Bazar.');
-                limpiarFormularioRegistro();
+                limpiarFormularioRegistro(); 
                 setShowAuthModal(false);
             }
         } catch (error: any) { 
@@ -347,6 +348,7 @@ const App: React.FC = () => {
         doc.save(`Cotizacion_${datosCotizacion.rutEmpresa}.pdf`);
         alert("¡PDF Generado!");
         
+        // Limpiar formulario de cotización también
         setDatosCotizacion({
             cantidad: 12,
             rutEmpresa: '',
@@ -531,7 +533,11 @@ const App: React.FC = () => {
             {showAuthModal && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-8 relative animate-fade-in overflow-y-auto max-h-[90vh]">
-                        <button onClick={() => setShowAuthModal(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><X className="w-6 h-6" /></button>
+                        
+                        {/* BOTÓN CERRAR CON LIMPIEZA AUTOMÁTICA */}
+                        <button onClick={() => { setShowAuthModal(false); limpiarFormularioRegistro(); }} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                            <X className="w-6 h-6" />
+                        </button>
                         
                         <div className="text-center mb-6">
                             <h2 className="text-2xl font-black text-blue-800 mb-2">{authMode === 'login' ? 'Bienvenido de nuevo' : 'Registro de Empresa'}</h2>
