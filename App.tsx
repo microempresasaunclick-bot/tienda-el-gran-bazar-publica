@@ -49,7 +49,6 @@ const App: React.FC = () => {
         precio: '',
         descripcion: '',
         categoria: 'general',
-        descuento: false,
         imagen_url: '' 
     });
 
@@ -145,7 +144,6 @@ const App: React.FC = () => {
         try {
             let finalImageUrl = nuevoProducto.imagen_url || "https://via.placeholder.com/300?text=Sin+Foto";
             
-            // Si hay NUEVA imagen, la subimos
             if (archivoImagen) {
                 setSubiendoImagen(true);
                 const fileName = `${Date.now()}.jpg`;
@@ -164,16 +162,13 @@ const App: React.FC = () => {
                 precio: precioInt,
                 imagen_url: finalImageUrl,
                 categoria: nuevoProducto.categoria,
-                descuento: nuevoProducto.descuento,
             };
 
             if (modoEdicion && idProductoEditar) {
-                // UPDATE (Editar)
                 const { error } = await supabase.from('productos').update(datosAEnviar).eq('id', idProductoEditar);
                 if (error) throw error;
                 alert('¡Producto actualizado correctamente!');
             } else {
-                // INSERT (Nuevo)
                 const { error } = await supabase.from('productos').insert([datosAEnviar]);
                 if (error) throw error;
                 alert('¡Producto publicado con éxito!');
@@ -193,7 +188,6 @@ const App: React.FC = () => {
             precio: prod.precio,
             descripcion: prod.descripcion,
             categoria: prod.categoria,
-            descuento: prod.descuento,
             imagen_url: prod.imagen_url
         });
         setPreviewUrl(prod.imagen_url);
@@ -204,70 +198,107 @@ const App: React.FC = () => {
         setShowPublicarModal(false);
         setModoEdicion(false);
         setIdProductoEditar(null);
-        setNuevoProducto({ nombre: '', precio: '', descripcion: '', categoria: 'general', descuento: false, imagen_url: '' });
+        setNuevoProducto({ nombre: '', precio: '', descripcion: '', categoria: 'general', imagen_url: '' });
         setArchivoImagen(null);
         setPreviewUrl('');
     };
 
-    // --- GENERADOR DE PDF ---
+    // --- GENERADOR DE PDF CORREGIDO (Lógica Chilena) ---
     const generarPDF = () => {
         if (!productoACotizar) return;
         const doc = new jsPDF();
         
-        let precioUnitario = productoACotizar.precio;
+        // 1. CÁLCULOS MATEMÁTICOS (Precio Final -> Neto)
+        let precioUnitarioFinal = productoACotizar.precio; // Precio Lista (Bruto)
+        
+        // Aplicar descuento por volumen
         if (datosCotizacion.cantidad >= 72) {
-             precioUnitario = precioUnitario * 0.85; 
+             precioUnitarioFinal = Math.round(precioUnitarioFinal * 0.85); // 15% desc
         } else if (datosCotizacion.cantidad >= 12) {
-             precioUnitario = precioUnitario * 0.95; 
+             precioUnitarioFinal = Math.round(precioUnitarioFinal * 0.95); // 5% desc
         }
-        const total = precioUnitario * datosCotizacion.cantidad;
 
+        // Total Final a Pagar (Bruto)
+        const totalFinalBruto = precioUnitarioFinal * datosCotizacion.cantidad;
+        
+        // Desglosar IVA (Para efectos contables)
+        // Fórmula Chile: Neto = Bruto / 1.19
+        const totalNeto = Math.round(totalFinalBruto / 1.19);
+        const totalIVA = totalFinalBruto - totalNeto;
+
+        // --- DISEÑO PDF ---
         doc.setFontSize(22);
         doc.setTextColor(41, 128, 185);
         doc.text("COTIZACIÓN FORMAL", 105, 20, { align: "center" });
         doc.text("EL GRAN BAZAR", 105, 30, { align: "center" });
         
-        doc.setFontSize(12);
-        doc.setTextColor(0,0,0);
-        doc.text(`Fecha: ${new Date().toLocaleDateString()}`, 14, 50);
-        
-        doc.setFontSize(14);
-        doc.text("Datos del Cliente (Empresa)", 14, 65);
+        // Datos del VENDEDOR (Fijo por ahora, plataforma)
         doc.setFontSize(10);
-        doc.text(`Razón Social: ${datosCotizacion.razonSocial}`, 14, 75);
-        doc.text(`RUT: ${datosCotizacion.rutEmpresa}`, 14, 80);
-        doc.text(`Email: ${datosCotizacion.emailContacto}`, 14, 85);
-        doc.text(`Teléfono: ${datosCotizacion.telefono}`, 14, 90);
+        doc.setTextColor(100, 100, 100);
+        doc.text("DATOS DEL VENDEDOR / PLATAFORMA:", 14, 45);
+        doc.setTextColor(0,0,0);
+        doc.text("El Gran Bazar - Microempresas a un Click", 14, 50);
+        doc.text("Email: microempresasaunclick@gmail.com", 14, 55);
+        doc.text("Fono/Wsp: +569 3176 1901", 14, 60);
 
+        doc.setDrawColor(200, 200, 200);
+        doc.line(14, 65, 196, 65); // Línea separadora
+        
+        // Datos del COMPRADOR
+        doc.setFontSize(14);
+        doc.setTextColor(41, 128, 185);
+        doc.text("Datos del Cliente (Comprador)", 14, 75);
+        doc.setFontSize(10);
+        doc.setTextColor(0,0,0);
+        doc.text(`Fecha: ${new Date().toLocaleDateString()}`, 150, 75);
+        doc.text(`Razón Social: ${datosCotizacion.razonSocial}`, 14, 85);
+        doc.text(`RUT: ${datosCotizacion.rutEmpresa}`, 14, 90);
+        doc.text(`Email: ${datosCotizacion.emailContacto}`, 14, 95);
+        doc.text(`Teléfono: ${datosCotizacion.telefono}`, 14, 100);
+
+        // Tabla Productos
         autoTable(doc, {
-            startY: 100,
-            head: [['Producto', 'Cant.', 'Precio Unit.', 'Total Neto']],
+            startY: 110,
+            head: [['Producto', 'Cant.', 'Precio Unit. (C/IVA)', 'Total (C/IVA)']],
             body: [
                 [
                     productoACotizar.nombre, 
                     datosCotizacion.cantidad, 
-                    `$${precioUnitario.toLocaleString('es-CL')}`, 
-                    `$${total.toLocaleString('es-CL')}`
+                    `$${precioUnitarioFinal.toLocaleString('es-CL')}`, 
+                    `$${totalFinalBruto.toLocaleString('es-CL')}`
                 ],
             ],
             theme: 'grid',
-            headStyles: { fillColor: [41, 128, 185] }
+            headStyles: { fillColor: [41, 128, 185] },
+            styles: { halign: 'right' }, // Alinear números a la derecha
+            columnStyles: { 0: { halign: 'left' } } // Nombre producto a la izquierda
         });
 
         const finalY = (doc as any).lastAutoTable.finalY + 10;
-        doc.setFontSize(12);
-        doc.text(`Total Neto: $${total.toLocaleString('es-CL')}`, 140, finalY);
-        doc.text(`IVA (19%): $${(total * 0.19).toLocaleString('es-CL')}`, 140, finalY + 7);
+        
+        // Cuadro de Totales (Alineado a la derecha)
+        doc.setFontSize(11);
+        doc.text(`Total Neto:`, 140, finalY);
+        doc.text(`$${totalNeto.toLocaleString('es-CL')}`, 190, finalY, { align: "right" });
+        
+        doc.text(`IVA (19%):`, 140, finalY + 7);
+        doc.text(`$${totalIVA.toLocaleString('es-CL')}`, 190, finalY + 7, { align: "right" });
+        
         doc.setFontSize(14);
         doc.setFont("helvetica", "bold");
-        doc.text(`TOTAL FINAL: $${(total * 1.19).toLocaleString('es-CL')}`, 140, finalY + 15);
+        doc.setTextColor(41, 128, 185);
+        doc.text(`TOTAL FINAL:`, 140, finalY + 16);
+        doc.text(`$${totalFinalBruto.toLocaleString('es-CL')}`, 190, finalY + 16, { align: "right" });
 
-        doc.setFontSize(10);
+        // Pie de página
+        doc.setFontSize(9);
         doc.setFont("helvetica", "normal");
-        doc.text("Esta cotización es válida por 10 días.", 105, 280, { align: "center" });
+        doc.setTextColor(150,150,150);
+        doc.text("Esta cotización es válida por 10 días desde la fecha de emisión.", 105, 270, { align: "center" });
+        doc.text("Generado automáticamente por El Gran Bazar App.", 105, 275, { align: "center" });
         
         doc.save(`Cotizacion_${datosCotizacion.rutEmpresa}.pdf`);
-        alert("¡PDF Generado y descargado exitosamente!");
+        alert("¡PDF Generado correctamente!");
         setProductoACotizar(null);
     };
 
@@ -453,39 +484,3 @@ const App: React.FC = () => {
                             
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 mb-1">Foto {modoEdicion && '(Sube otra para cambiarla)'}</label>
-                                <div className="border-2 border-dashed border-gray-300 rounded-xl p-4 text-center hover:bg-gray-50 transition-colors cursor-pointer relative">
-                                    <input type="file" accept="image/*" onChange={handleImageSelect} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"/>
-                                    <div className="flex flex-col items-center justify-center text-gray-500">
-                                        {procesandoImagen ? <span className="animate-pulse text-blue-500">Optimizando...</span> : previewUrl ? <img src={previewUrl} className="h-32 object-contain rounded"/> : <div className="flex flex-col items-center"><UploadCloud className="w-8 h-8 text-gray-400"/><span className="text-sm">Toca para subir</span></div>}
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div><label className="block text-sm font-bold text-gray-700 mb-1">Descripción</label><textarea rows={3} value={nuevoProducto.descripcion} onChange={e => setNuevoProducto({...nuevoProducto, descripcion: e.target.value})} className="w-full p-3 border rounded-xl" placeholder="Detalles..."/></div>
-                            <div className="flex items-center gap-2"><input type="checkbox" id="desc" checked={nuevoProducto.descuento} onChange={e => setNuevoProducto({...nuevoProducto, descuento: e.target.checked})} className="w-5 h-5 text-blue-600 rounded"/><label htmlFor="desc" className="text-gray-700 font-medium">¿Oferta?</label></div>
-                            <button type="submit" disabled={loading || procesandoImagen} className="w-full bg-green-600 text-white font-bold py-3 rounded-xl hover:bg-green-700 transition-all shadow-lg flex justify-center items-center gap-2"><Save className="w-5 h-5"/> {loading || subiendoImagen ? 'Guardando...' : (modoEdicion ? 'Actualizar Producto' : 'Publicar Ahora')}</button>
-                        </form>
-                    </div>
-                </div>
-            )}
-
-            {/* MODAL: LOGIN */}
-            {showAuthModal && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 relative">
-                        <button onClick={() => setShowAuthModal(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><X className="w-6 h-6" /></button>
-                        <h2 className="text-2xl font-black text-blue-800 mb-6 text-center">{authMode === 'login' ? 'Bienvenido' : 'Crear Cuenta'}</h2>
-                        {errorMsg && <div className="bg-red-50 text-red-600 p-3 rounded mb-4 text-sm">{errorMsg}</div>}
-                        <form onSubmit={handleAuth} className="space-y-4">
-                            <div><label className="text-sm font-bold text-gray-700">Correo</label><input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full p-3 border rounded-xl"/></div>
-                            <div><label className="text-sm font-bold text-gray-700">Contraseña</label><input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="w-full p-3 border rounded-xl"/></div>
-                            <button type="submit" className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700">{loading ? '...' : (authMode === 'login' ? 'Ingresar' : 'Registrarse')}</button>
-                        </form>
-                    </div>
-                </div>
-            )}
-        </div>
-    );
-};
-
-export default App;
