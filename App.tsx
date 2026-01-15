@@ -50,7 +50,7 @@ const App: React.FC = () => {
         descripcion: '',
         categoria: 'general',
         descuento: false,
-        imagen_url: '' // Para guardar la URL anterior si no se cambia
+        imagen_url: '' 
     });
 
     // Supabase Config
@@ -214,16 +214,14 @@ const App: React.FC = () => {
         if (!productoACotizar) return;
         const doc = new jsPDF();
         
-        // Lógica de precio por volumen
         let precioUnitario = productoACotizar.precio;
         if (datosCotizacion.cantidad >= 72) {
-             precioUnitario = precioUnitario * 0.85; // 15% desc por mayorista
+             precioUnitario = precioUnitario * 0.85; 
         } else if (datosCotizacion.cantidad >= 12) {
-             precioUnitario = precioUnitario * 0.95; // 5% desc
+             precioUnitario = precioUnitario * 0.95; 
         }
         const total = precioUnitario * datosCotizacion.cantidad;
 
-        // Encabezado
         doc.setFontSize(22);
         doc.setTextColor(41, 128, 185);
         doc.text("COTIZACIÓN FORMAL", 105, 20, { align: "center" });
@@ -233,7 +231,6 @@ const App: React.FC = () => {
         doc.setTextColor(0,0,0);
         doc.text(`Fecha: ${new Date().toLocaleDateString()}`, 14, 50);
         
-        // Datos Cliente
         doc.setFontSize(14);
         doc.text("Datos del Cliente (Empresa)", 14, 65);
         doc.setFontSize(10);
@@ -242,7 +239,6 @@ const App: React.FC = () => {
         doc.text(`Email: ${datosCotizacion.emailContacto}`, 14, 85);
         doc.text(`Teléfono: ${datosCotizacion.telefono}`, 14, 90);
 
-        // Tabla Productos
         autoTable(doc, {
             startY: 100,
             head: [['Producto', 'Cant.', 'Precio Unit.', 'Total Neto']],
@@ -258,7 +254,6 @@ const App: React.FC = () => {
             headStyles: { fillColor: [41, 128, 185] }
         });
 
-        // Totales
         const finalY = (doc as any).lastAutoTable.finalY + 10;
         doc.setFontSize(12);
         doc.text(`Total Neto: $${total.toLocaleString('es-CL')}`, 140, finalY);
@@ -267,7 +262,6 @@ const App: React.FC = () => {
         doc.setFont("helvetica", "bold");
         doc.text(`TOTAL FINAL: $${(total * 1.19).toLocaleString('es-CL')}`, 140, finalY + 15);
 
-        // Pie de página
         doc.setFontSize(10);
         doc.setFont("helvetica", "normal");
         doc.text("Esta cotización es válida por 10 días.", 105, 280, { align: "center" });
@@ -277,7 +271,6 @@ const App: React.FC = () => {
         setProductoACotizar(null);
     };
 
-    // --- RENDER ---
     const productosVisibles = productos.filter(p => {
         const coincideBusqueda = p.nombre ? p.nombre.toLowerCase().includes(searchTerm.toLowerCase()) : false;
         let coincideBoton = true;
