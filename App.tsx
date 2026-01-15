@@ -603,6 +603,26 @@ const App: React.FC = () => {
                     </div>
                 </div>
             )}
+
+            {/* FOOTER - RECUPERADO */}
+            <footer className="bg-[#2D3748] text-gray-400 mt-12">
+                <div className="container mx-auto py-8 px-4">
+                    <div className="text-center text-sm border-b border-gray-700 pb-6">
+                        <p>&copy; 2025 - El Gran Bazar. Todos los derechos reservados.</p>
+                        <p className="mt-1 font-semibold text-blue-400">Pymes y Microempresas a un Click</p>
+                    </div>
+                    <div className="mt-6 flex justify-center items-center space-x-8 text-sm flex-wrap">
+                        <a href="mailto:microempresasaunclick@gmail.com" className="flex items-center space-x-2 hover:text-white transition-colors my-2">
+                            <Mail className="h-5 w-5 text-blue-400" />
+                            <span>microempresasaunclick@gmail.com</span>
+                        </a>
+                        <a href="tel:+56931761901" className="flex items-center space-x-2 hover:text-white transition-colors my-2">
+                            <Phone className="h-5 w-5 text-green-400" />
+                            <span>+569-31761901</span>
+                        </a>
+                    </div>
+                </div>
+            </footer>
         </div>
     );
 };
