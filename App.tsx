@@ -604,7 +604,7 @@ const App: React.FC = () => {
                 </div>
             )}
 
-            {/* FOOTER - RECUPERADO */}
+            {/* FOOTER - ACTUALIZADO CON 2 TELÉFONOS */}
             <footer className="bg-[#2D3748] text-gray-400 mt-12">
                 <div className="container mx-auto py-8 px-4">
                     <div className="text-center text-sm border-b border-gray-700 pb-6">
@@ -619,6 +619,10 @@ const App: React.FC = () => {
                         <a href="tel:+56931761901" className="flex items-center space-x-2 hover:text-white transition-colors my-2">
                             <Phone className="h-5 w-5 text-green-400" />
                             <span>+569-31761901</span>
+                        </a>
+                        <a href="tel:+56947436919" className="flex items-center space-x-2 hover:text-white transition-colors my-2">
+                            <Phone className="h-5 w-5 text-green-400" />
+                            <span>+569-47436919</span>
                         </a>
                     </div>
                 </div>
