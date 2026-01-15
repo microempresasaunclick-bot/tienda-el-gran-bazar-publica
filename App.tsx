@@ -13,8 +13,10 @@ const App: React.FC = () => {
         const iniciarBazar = async () => {
             setLoading(true);
             
-            // ✅ CONEXIÓN A "EL GRAN BAZAR"
+            // ✅ CONEXIÓN A "EL GRAN BAZAR" (Proyecto Nuevo)
             const url = "https://dcssdiohhbmbqwuzuhda.supabase.co";
+            
+            // La llave se toma de Netlify
             const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
             if (!key) {
@@ -49,7 +51,8 @@ const App: React.FC = () => {
     });
 
     return (
-        <div className="min-h-screen bg-gray-100 font-sans flex flex-col relative">
+        // ✅ FONDO BLANCO PURO (bg-white)
+        <div className="min-h-screen bg-white font-sans flex flex-col relative">
             <style>{`
                 .hero-gradient { background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%); }
                 .antü-gold { background: #b19149; }
@@ -60,7 +63,9 @@ const App: React.FC = () => {
             <header className="bg-white shadow-md sticky top-0 z-50">
                 <div className="container mx-auto px-4 py-3 flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 cursor-pointer shrink-0" onClick={() => {setFiltroActivo('todos'); setSearchTerm('');}}>
-                        {/* Logo / Título */}
+                        {/* AQUÍ VA EL LOGO
+                           Si tienes la URL de la imagen, cambia este <span> por la etiqueta <img>
+                        */}
                         <span className="text-xl md:text-2xl font-black text-blue-800 tracking-tight uppercase">
                             EL GRAN BAZAR
                         </span>
@@ -125,7 +130,7 @@ const App: React.FC = () => {
                     </div>
                 </div>
 
-                {/* RESULTADOS */}
+                {/* TÍTULO DE SECCIÓN */}
                 <div className="text-center mb-8">
                     <h2 className="text-2xl font-bold text-gray-800 capitalize">
                         {filtroActivo === 'todos' ? 'Novedades' : `Sección: ${filtroActivo}`}
@@ -149,6 +154,7 @@ const App: React.FC = () => {
                         {productosVisibles.map((producto) => (
                             <div key={producto.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-2xl transition-all duration-300 group">
                                 <div className="h-64 bg-gray-200 relative overflow-hidden">
+                                    {/* Imagen con fallback */}
                                     <img 
                                         src={producto.imagen_url || "https://images.unsplash.com/photo-1557821552-17105176677c?w=500&q=80"} 
                                         alt={producto.nombre}
@@ -190,7 +196,7 @@ const App: React.FC = () => {
                 <span className="font-bold hidden md:inline">Chat con Antü</span>
             </button>
 
-            {/* FOOTER CORREGIDO Y DETALLADO */}
+            {/* FOOTER OFICIAL CON CONTACTO */}
             <footer className="bg-[#2D3748] text-gray-400 mt-12">
                 <div className="container mx-auto py-8 px-4">
                     {/* Copyright y Slogan */}
