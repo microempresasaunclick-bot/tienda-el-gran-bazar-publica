@@ -442,7 +442,7 @@ const App: React.FC = () => {
                         <div className="hero-gradient text-center p-8 md:p-16 text-white rounded-3xl shadow-2xl mb-12">
                             <h1 className="text-4xl md:text-6xl font-black mb-2 leading-tight tracking-tight">Bienvenido a <br/> El Gran Bazar</h1>
                             
-                            {/* SUBTÍTULO RECUPERADO SEGÚN IMAGEN */}
+                            {/* SUBTÍTULO RECUPERADO */}
                             <p className="text-blue-100 text-lg md:text-xl font-medium mb-8 max-w-2xl mx-auto">
                                 Conectando Pymes y Microempresas contigo, a un solo click.
                             </p>
@@ -484,7 +484,7 @@ const App: React.FC = () => {
                 )}
             </main>
 
-            {/* MODALES (COTIZACIÓN / PUBLICAR / LOGIN) */}
+            {/* MODAL COTIZACION */}
             {productoACotizar && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
                     <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg p-8 relative animate-fade-in overflow-y-auto max-h-[90vh]">
@@ -516,6 +516,7 @@ const App: React.FC = () => {
                 </div>
             )}
 
+            {/* MODAL PUBLICAR/EDITAR PRODUCTO */}
             {showPublicarModal && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-8 relative animate-fade-in overflow-y-auto max-h-[90vh]">
@@ -590,11 +591,11 @@ const App: React.FC = () => {
                 </div>
             )}
 
-            {/* FOOTER - ACTUALIZADO CON LOS 2 TELÉFONOS */}
+            {/* FOOTER - ACTUALIZADO CON LOS 2 TELÉFONOS Y RANGO 2025-2026 */}
             <footer className="bg-[#2D3748] text-gray-400 mt-12">
                 <div className="container mx-auto py-8 px-4">
                     <div className="text-center text-sm border-b border-gray-700 pb-6">
-                        <p>&copy; 2025 - El Gran Bazar. Todos los derechos reservados.</p>
+                        <p>&copy; 2025 - 2026 - El Gran Bazar. Todos los derechos reservados.</p>
                         <p className="mt-1 font-semibold text-blue-400">Pymes y Microempresas a un Click</p>
                     </div>
                     <div className="mt-6 flex justify-center items-center space-x-8 text-sm flex-wrap">
