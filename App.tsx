@@ -1,14 +1,3 @@
-Entiendo perfectamente tu frustración. Al analizar las imágenes y el comportamiento que describes, el problema es técnico: el botón "Generar Cotización Estructurada" no está logrando ejecutar la función porque el código se está "rompiendo" internamente al intentar acceder a los datos del vendedor (logo, RUT, nombre) que deberían venir del registro.
-
-Si esos datos no están cargados correctamente en la sesión del usuario, la función del PDF se detiene por seguridad para no generar un documento en blanco.
-
-Para solucionar esto de raíz, he reconstruido el código con un "Sistema de Emergencia": si el sistema no encuentra tus datos de empresa, usará unos datos básicos por defecto para que el PDF sí se genere siempre y no se quede pegado.
-
-📋 Código Maestro Final (App.tsx)
-Copia este código completo. Por favor, baja hasta el final de la caja negra para asegurarte de copiarlo todo, incluyendo la última línea.
-
-TypeScript
-
 import React, { useState, useEffect } from 'react';
 import { Search, ShoppingBag, Percent, Tag, Mail, Phone, LogIn, UserPlus, MessageCircle, X, Plus, Package, Settings, LogOut, Save, Image as ImageIcon, UploadCloud, FileText, Edit, Trash2 } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
@@ -150,9 +139,7 @@ const App: React.FC = () => {
         finally { setLoading(false); }
     };
 
-    // FUNCIÓN GENERAR PDF CON ESTRUCTURA PROFESIONAL
     const generarPDF = () => {
-        console.log("Iniciando generación de PDF...");
         if (!productoACotizar) {
             alert("No hay producto seleccionado para cotizar.");
             return;
@@ -160,7 +147,6 @@ const App: React.FC = () => {
 
         try {
             const doc = new jsPDF();
-            // Si el usuario no está logueado o no tiene metadata, usamos datos de respaldo para que el botón funcione
             const m = user?.user_metadata || {
                 empresa_nombre: "EL GRAN BAZAR VENDEDOR",
                 empresa_rut: "77.777.777-7",
@@ -177,9 +163,8 @@ const App: React.FC = () => {
             const subtotalNeto = Math.round(totalBruto / 1.19);
             const iva = totalBruto - subtotalNeto;
 
-            // Cabezal Corporativo Vendedor
             if (m.empresa_logo_url) {
-                try { doc.addImage(m.empresa_logo_url, 'JPEG', 14, 10, 30, 30); } catch(e) { console.error("Error cargando logo en PDF", e); }
+                try { doc.addImage(m.empresa_logo_url, 'JPEG', 14, 10, 30, 30); } catch(e) { console.error(e); }
             }
             
             doc.setFontSize(14); doc.setTextColor(26, 35, 126);
@@ -195,7 +180,6 @@ const App: React.FC = () => {
             doc.setFontSize(12); doc.setTextColor(26, 35, 126);
             doc.text("COT-" + Math.floor(Math.random() * 10000), 165, 30);
 
-            // Bloques Cliente y Detalles
             doc.setFillColor(245, 247, 251); doc.rect(14, 45, 90, 25, 'F');
             doc.rect(106, 45, 90, 25, 'F');
             doc.setFontSize(8); doc.setTextColor(150);
@@ -224,11 +208,10 @@ const App: React.FC = () => {
             doc.text(`Autorizado por: ${m.full_name || "Vendedor"}`, 190, 285, { align: 'right' });
             
             doc.save(`Cotizacion_${m.empresa_nombre}.pdf`);
-            console.log("PDF generado con éxito.");
             setProductoACotizar(null);
         } catch (err) {
-            console.error("Error crítico generando PDF:", err);
-            alert("Error al generar el documento. Por favor intente de nuevo.");
+            console.error(err);
+            alert("Error al generar el PDF.");
         }
     };
 
@@ -299,7 +282,6 @@ const App: React.FC = () => {
         <div className="min-h-screen bg-white font-sans flex flex-col relative">
             <style>{`.hero-gradient { background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%); }`}</style>
 
-            {/* HEADER */}
             <header className="bg-white shadow-md sticky top-0 z-50">
                 <div className="container mx-auto px-4 py-3 flex items-center justify-between">
                     <div className="cursor-pointer" onClick={() => setVistaActual('home')}>
@@ -437,7 +419,7 @@ const App: React.FC = () => {
                                 <label className="block text-sm font-bold text-gray-700 mb-1">Foto</label>
                                 <div className="border-2 border-dashed border-gray-300 rounded-xl p-4 text-center hover:bg-gray-50 relative h-32 flex items-center justify-center cursor-pointer">
                                     <input type="file" accept="image/*" onChange={handleImageSelect} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"/>
-                                    {procesandoImagen ? <span className="animate-pulse text-blue-500 font-bold">Optimización...</span> : previewUrl ? <img src={previewUrl} className="h-full object-contain rounded-lg"/> : <div className="text-gray-400"><UploadCloud className="w-8 h-8 mx-auto mb-1"/><span className="text-sm">Subir Foto</span></div>}
+                                    {procesandoImagen ? <span className="animate-pulse text-blue-500 font-bold">Optimización...</span> : previewUrl ? <img src={previewUrl} className="h-full object-contain rounded-lg" alt=""/> : <div className="text-gray-400"><UploadCloud className="w-8 h-8 mx-auto mb-1"/><span className="text-sm">Subir Foto</span></div>}
                                 </div>
                             </div>
                             <div><label className="block text-sm font-bold text-gray-700 mb-1">Descripción</label><textarea rows={3} value={nuevoProducto.descripcion} onChange={e => setNuevoProducto({...nuevoProducto, descripcion: e.target.value})} className="w-full p-3 border rounded-xl"/></div>
@@ -473,7 +455,7 @@ const App: React.FC = () => {
                                         <label className="text-xs font-bold text-gray-600 uppercase mb-1 block">Logo Corporativo</label>
                                         <div className="border-2 border-dashed border-gray-300 rounded-xl p-4 text-center hover:bg-gray-50 relative flex items-center justify-center h-24 cursor-pointer transition-colors">
                                             <input type="file" accept="image/*" onChange={handleLogoSelect} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"/>
-                                            {regLogoPreview ? <div className="flex items-center gap-4"><img src={regLogoPreview} className="h-16 w-16 object-contain border bg-white rounded-lg shadow-sm"/><span className="text-green-600 text-xs font-bold">Logo OK</span></div> : <div className="text-gray-400 flex flex-col items-center"><ImageIcon className="w-6 h-6 mb-1"/><span className="text-xs">Subir Logo (JPG/PNG)</span></div>}
+                                            {regLogoPreview ? <div className="flex items-center gap-4"><img src={regLogoPreview} className="h-16 w-16 object-contain border bg-white rounded-lg shadow-sm" alt=""/><span className="text-green-600 text-xs font-bold">Logo OK</span></div> : <div className="text-gray-400 flex flex-col items-center"><ImageIcon className="w-6 h-6 mb-1"/><span className="text-xs">Subir Logo (JPG/PNG)</span></div>}
                                         </div>
                                     </div>
                                 </div>
