@@ -17,9 +17,9 @@ const App: React.FC = () => {
     const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
     const [user, setUser] = useState<any>(null);
     
-    // MEMORIA DE EMPRESA (Persistente aunque cierres sesión)
+    // MEMORIA DE EMPRESA (Se inicia leyendo la memoria del navegador)
     const [empresaData, setEmpresaData] = useState<any>(() => {
-        const guardado = localStorage.getItem('datos_empresa_local');
+        const guardado = localStorage.getItem('datos_tienda_fija');
         return guardado ? JSON.parse(guardado) : null;
     });
 
@@ -62,10 +62,11 @@ const App: React.FC = () => {
 
     // --- FUNCIONES ---
 
-    const actualizarMemoriaEmpresa = (metadata: any) => {
+    // Esta función fija al vendedor en este computador/navegador
+    const fijarDatosVendedor = (metadata: any) => {
         if (metadata) {
             setEmpresaData(metadata);
-            localStorage.setItem('datos_empresa_local', JSON.stringify(metadata));
+            localStorage.setItem('datos_tienda_fija', JSON.stringify(metadata));
         }
     };
 
@@ -117,12 +118,12 @@ const App: React.FC = () => {
         supabase.auth.getSession().then(({ data: { session } }) => {
             if (session?.user) { 
                 setUser(session.user);
-                actualizarMemoriaEmpresa(session.user.user_metadata);
+                fijarDatosVendedor(session.user.user_metadata); // Guardar datos al iniciar
             }
         });
         const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
             setUser(session?.user || null);
-            if (session?.user) actualizarMemoriaEmpresa(session.user.user_metadata);
+            if (session?.user) fijarDatosVendedor(session.user.user_metadata); // Guardar datos al cambiar estado
             if (event === 'SIGNED_OUT') setVistaActual('home');
         });
         return () => { authListener.subscription.unsubscribe(); };
@@ -136,7 +137,7 @@ const App: React.FC = () => {
             if (authMode === 'login') {
                 const { data, error } = await supabase.auth.signInWithPassword({ email, password });
                 if (error) throw error;
-                if (data.user) actualizarMemoriaEmpresa(data.user.user_metadata);
+                if (data.user) fijarDatosVendedor(data.user.user_metadata);
                 limpiarFormularioRegistro(); 
                 setShowAuthModal(false);
             } else {
@@ -158,7 +159,7 @@ const App: React.FC = () => {
                     const res = supabase.storage.from('imagenes').getPublicUrl(fileName);
                     publicUrl = res.data.publicUrl;
                     
-                    // Actualizar metadata inmediatamente
+                    // Actualizar en supabase y localmente
                     await supabase.auth.updateUser({ data: { empresa_logo_url: publicUrl } });
                 }
 
@@ -167,7 +168,7 @@ const App: React.FC = () => {
                     full_name: regNombre, phone: regTelefono, empresa_nombre: regEmpresa,
                     empresa_rut: regRut, empresa_direccion: regDireccion, empresa_logo_url: publicUrl
                 };
-                actualizarMemoriaEmpresa(newMeta);
+                fijarDatosVendedor(newMeta);
 
                 alert('¡Registro exitoso! Ya puedes ingresar.');
                 setAuthMode('login');
@@ -177,15 +178,15 @@ const App: React.FC = () => {
         finally { setLoading(false); }
     };
 
-    // GENERAR PDF USANDO MEMORIA PERSISTENTE
+    // GENERAR PDF USANDO MEMORIA FIJA DEL VENDEDOR
     const generarPDF = () => {
         if (!productoACotizar) return;
 
-        // Recuperar datos: 1ro del usuario activo, 2do de la memoria local
-        const m = user?.user_metadata || empresaData;
+        // AQUÍ ESTÁ LA SOLUCIÓN: Usamos empresaData que persiste aunque cierres sesión
+        const m = empresaData; 
 
         if (!m) {
-            alert("No se encontraron datos de vendedor. Por favor, inicia sesión al menos una vez para configurar tu empresa.");
+            alert("Atención: Aún no se han configurado los datos de la tienda. Por favor inicia sesión como vendedor una vez para guardarlos.");
             setShowAuthModal(true);
             return;
         }
