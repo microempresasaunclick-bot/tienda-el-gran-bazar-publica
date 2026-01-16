@@ -139,21 +139,20 @@ const App: React.FC = () => {
         finally { setLoading(false); }
     };
 
+    // FUNCIÓN GENERAR PDF REFORZADA PARA EVITAR DATOS GENÉRICOS
     const generarPDF = () => {
-        if (!productoACotizar) {
-            alert("No hay producto seleccionado para cotizar.");
+        if (!productoACotizar) return;
+        
+        // Verificación de seguridad: Si no hay usuario, obligar a entrar
+        if (!user) {
+            alert("Debes estar dentro de tu Panel de Control para que tus datos aparezcan en la cotización.");
+            setShowAuthModal(true);
             return;
         }
 
         try {
             const doc = new jsPDF();
-            const m = user?.user_metadata || {
-                empresa_nombre: "EL GRAN BAZAR VENDEDOR",
-                empresa_rut: "77.777.777-7",
-                empresa_direccion: "Santiago, Chile",
-                full_name: "Representante de Ventas",
-                phone: "+569 3176 1901"
-            };
+            const m = user.user_metadata; // DATOS REALES DEL VENDEDOR LOGUEADO
             
             let unitarioBruto = productoACotizar.precio;
             if (datosCotizacion.cantidad >= 72) unitarioBruto = Math.round(unitarioBruto * 0.85); 
@@ -163,55 +162,61 @@ const App: React.FC = () => {
             const subtotalNeto = Math.round(totalBruto / 1.19);
             const iva = totalBruto - subtotalNeto;
 
+            // 1. LOGO DINÁMICO DEL VENDEDOR
             if (m.empresa_logo_url) {
-                try { doc.addImage(m.empresa_logo_url, 'JPEG', 14, 10, 30, 30); } catch(e) { console.error(e); }
+                try { doc.addImage(m.empresa_logo_url, 'JPEG', 14, 10, 30, 30); } catch(e) { console.error("Error logo", e); }
             }
             
+            // 2. DATOS DINÁMICOS DEL VENDEDOR (Lado izquierdo superior)
             doc.setFontSize(14); doc.setTextColor(26, 35, 126);
-            doc.text(m.empresa_nombre?.toUpperCase() || "VENDEDOR", 50, 15);
+            doc.text(m.empresa_nombre?.toUpperCase() || "MI EMPRESA", 50, 15);
             doc.setFontSize(9); doc.setTextColor(80);
             doc.text(`RUT: ${m.empresa_rut || "S/R"}`, 50, 20);
-            doc.text(m.empresa_direccion || "Dirección no registrada", 50, 25);
-            doc.text(user?.email || "contacto@elgranbazar.com", 50, 30);
-            doc.text(m.phone || "", 50, 35);
+            doc.text(m.empresa_direccion || "Dirección Comercial", 50, 25);
+            doc.text(`Contacto: ${m.phone || user.email}`, 50, 30);
 
+            // Título Cotización (Lado derecho superior)
             doc.setFontSize(24); doc.setTextColor(200);
             doc.text("COTIZACIÓN", 140, 20);
             doc.setFontSize(12); doc.setTextColor(26, 35, 126);
-            doc.text("COT-" + Math.floor(Math.random() * 10000), 165, 30);
+            doc.text("ID: " + Math.floor(1000 + Math.random() * 9000), 165, 30);
 
+            // Bloques Cliente y Detalles [Estructura Profesional]
             doc.setFillColor(245, 247, 251); doc.rect(14, 45, 90, 25, 'F');
             doc.rect(106, 45, 90, 25, 'F');
             doc.setFontSize(8); doc.setTextColor(150);
-            doc.text("CLIENTE", 18, 52); doc.text("DETALLES", 110, 52);
+            doc.text("DATOS DEL CLIENTE", 18, 52); doc.text("DETALLES DEL DOCUMENTO", 110, 52);
             doc.setFontSize(10); doc.setTextColor(0);
-            doc.text(datosCotizacion.razonSocial || "Nombre Cliente", 18, 58);
-            doc.text(`Dirección: ${datosCotizacion.direccionCliente || "S/D"}`, 18, 63);
+            doc.text(datosCotizacion.razonSocial || "Nombre/Empresa Cliente", 18, 58);
+            doc.text(`Dirección: ${datosCotizacion.direccionCliente || "No especificada"}`, 18, 63);
             doc.text(`Fecha Emisión: ${new Date().toLocaleDateString()}`, 110, 58);
-            doc.text(`Válida hasta: ${new Date(Date.now() + 30*24*60*60*1000).toLocaleDateString()}`, 110, 63);
+            doc.text(`Validez: 30 días corridos`, 110, 63);
 
+            // Tabla de Productos
             autoTable(doc, {
                 startY: 75,
-                head: [['DESCRIPCIÓN', 'CANT.', 'PRECIO UNIT.', 'TOTAL']],
+                head: [['DESCRIPCIÓN DEL PRODUCTO', 'CANT.', 'P. UNITARIO', 'TOTAL BRUTO']],
                 body: [[productoACotizar.nombre, datosCotizacion.cantidad, `$${unitarioBruto.toLocaleString('es-CL')}`, `$${totalBruto.toLocaleString('es-CL')}`]],
                 theme: 'striped', headStyles: { fillColor: [26, 35, 126] }
             });
 
+            // Resumen de Totales
             const finalY = (doc as any).lastAutoTable.finalY + 10;
             doc.setFontSize(10);
-            doc.text(`Subtotal:`, 140, finalY); doc.text(`$${subtotalNeto.toLocaleString('es-CL')}`, 190, finalY, { align: 'right' });
+            doc.text(`Subtotal Neto:`, 140, finalY); doc.text(`$${subtotalNeto.toLocaleString('es-CL')}`, 190, finalY, { align: 'right' });
             doc.text(`IVA (19%):`, 140, finalY + 6); doc.text(`$${iva.toLocaleString('es-CL')}`, 190, finalY + 6, { align: 'right' });
             doc.setFontSize(12); doc.setFont("helvetica", "bold"); doc.setTextColor(26, 35, 126);
-            doc.text(`Total:`, 140, finalY + 14); doc.text(`$${totalBruto.toLocaleString('es-CL')}`, 190, finalY + 14, { align: 'right' });
+            doc.text(`TOTAL FINAL:`, 140, finalY + 14); doc.text(`$${totalBruto.toLocaleString('es-CL')}`, 190, finalY + 14, { align: 'right' });
 
+            // Pie de Autorización
             doc.setFontSize(8); doc.setFont("helvetica", "normal"); doc.setTextColor(150);
-            doc.text(`Autorizado por: ${m.full_name || "Vendedor"}`, 190, 285, { align: 'right' });
+            doc.text(`Emitido por: ${m.full_name || "Vendedor Autorizado"}`, 190, 285, { align: 'right' });
             
-            doc.save(`Cotizacion_${m.empresa_nombre}.pdf`);
+            doc.save(`Cotizacion_${m.empresa_nombre || 'Empresa'}.pdf`);
             setProductoACotizar(null);
         } catch (err) {
             console.error(err);
-            alert("Error al generar el PDF.");
+            alert("Error al procesar el PDF.");
         }
     };
 
@@ -282,6 +287,7 @@ const App: React.FC = () => {
         <div className="min-h-screen bg-white font-sans flex flex-col relative">
             <style>{`.hero-gradient { background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%); }`}</style>
 
+            {/* HEADER */}
             <header className="bg-white shadow-md sticky top-0 z-50">
                 <div className="container mx-auto px-4 py-3 flex items-center justify-between">
                     <div className="cursor-pointer" onClick={() => setVistaActual('home')}>
@@ -324,7 +330,7 @@ const App: React.FC = () => {
                                 <tbody className="divide-y divide-gray-100">
                                     {productos.map((prod) => (
                                         <tr key={prod.id} className="hover:bg-gray-50">
-                                            <td className="p-4 flex items-center gap-3"><img src={prod.imagen_url} className="w-10 h-10 rounded-lg object-cover bg-gray-200" /><span className="font-medium">{prod.nombre}</span></td>
+                                            <td className="p-4 flex items-center gap-3"><img src={prod.imagen_url} className="w-10 h-10 rounded-lg object-cover bg-gray-200" alt="" /><span className="font-medium">{prod.nombre}</span></td>
                                             <td className="p-4 font-bold text-gray-600">${prod.precio?.toLocaleString('es-CL')}</td>
                                             <td className="p-4 text-right"><button onClick={() => abrirModalEdicion(prod)} className="bg-blue-50 text-blue-600 px-3 py-1 rounded-lg text-sm font-bold border border-blue-200">Editar</button></td>
                                         </tr>
@@ -389,11 +395,10 @@ const App: React.FC = () => {
                                 <div><label className="text-xs font-bold text-gray-600 uppercase mb-1 block">Teléfono</label><input type="tel" value={datosCotizacion.telefono} onChange={e => setDatosCotizacion({...datosCotizacion, telefono: e.target.value})} className="w-full p-3 border rounded-xl outline-none" placeholder="+569..."/></div>
                             </div>
                             <div className="bg-yellow-50 p-3 rounded-lg text-xs text-yellow-800 border border-yellow-200">💡 <b>Descuentos:</b> 5% desde 12 unidades, 15% desde 72 unidades.</div>
+                            
+                            {/* BOTÓN CON LLAMADA EXPLÍCITA A GENERAR PDF */}
                             <button 
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    generarPDF();
-                                }} 
+                                onClick={(e) => { e.preventDefault(); generarPDF(); }} 
                                 className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg flex items-center justify-center gap-2 text-lg transition-all active:scale-95"
                             >
                                 <FileText className="w-6 h-6"/> Generar Cotización Estructurada
