@@ -190,6 +190,7 @@ const App: React.FC = () => {
         setArchivoImagen(null); setPreviewUrl('');
     };
 
+    // FUNCION DE GENERACION DE PDF PROFESIONAL
     const generarPDF = () => {
         if (!productoACotizar || !user) return;
         const doc = new jsPDF();
@@ -203,8 +204,10 @@ const App: React.FC = () => {
         const subtotalNeto = Math.round(totalBruto / 1.19);
         const iva = totalBruto - subtotalNeto;
 
-        // ESTRUCTURA SEGÚN REFERENCIA
-        if (m.empresa_logo_url) doc.addImage(m.empresa_logo_url, 'JPEG', 14, 10, 30, 30);
+        // Cabezal Vendedor
+        if (m.empresa_logo_url) {
+            doc.addImage(m.empresa_logo_url, 'JPEG', 14, 10, 30, 30);
+        }
         
         doc.setFontSize(14); doc.setTextColor(26, 35, 126);
         doc.text(m.empresa_nombre?.toUpperCase() || "VENDEDOR", 50, 15);
@@ -219,7 +222,7 @@ const App: React.FC = () => {
         doc.setFontSize(12); doc.setTextColor(26, 35, 126);
         doc.text("COT-1500", 165, 30);
 
-        // Bloques Cliente y Detalles
+        // Bloques Informativos
         doc.setFillColor(245, 247, 251); doc.rect(14, 45, 90, 25, 'F');
         doc.rect(106, 45, 90, 25, 'F');
         
@@ -250,7 +253,9 @@ const App: React.FC = () => {
 
         doc.setFontSize(8); doc.setFont("helvetica", "normal"); doc.setTextColor(150);
         doc.text(`Autorizado por: ${m.full_name || "Vendedor"}`, 190, 285, { align: 'right' });
+        
         doc.save(`Cotizacion_${m.empresa_nombre}.pdf`);
+        alert("Cotización generada correctamente.");
         setProductoACotizar(null);
     };
 
@@ -357,17 +362,19 @@ const App: React.FC = () => {
                 )}
             </main>
 
-            {/* MODAL COTIZACION */}
+            {/* MODAL SOLICITUD COTIZACION */}
             {productoACotizar && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
                     <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg p-8 animate-fade-in overflow-y-auto max-h-[90vh] relative">
                         <button onClick={() => setProductoACotizar(null)} className="absolute top-4 right-4 text-gray-400"><X className="w-6 h-6" /></button>
                         <h2 className="text-2xl font-black text-gray-800 mb-2">Solicitud de Cotización</h2>
                         <p className="text-gray-500 mb-6 text-sm">Ingresa los datos para tu documento formal profesional.</p>
+                        
                         <div className="bg-blue-50 p-4 rounded-xl mb-6 border border-blue-100 flex items-center gap-4">
-                            <img src={productoACotizar.imagen_url} className="w-16 h-16 rounded-lg object-cover bg-white" alt="" />
+                            <img src={productoACotizar.imagen_url} className="w-16 h-16 rounded-lg object-cover bg-white border" alt="" />
                             <div><p className="font-bold text-gray-800">{productoACotizar.nombre}</p><p className="text-blue-600 font-bold">${productoACotizar.precio.toLocaleString('es-CL')}</p></div>
                         </div>
+
                         <div className="space-y-4">
                             <div className="grid grid-cols-2 gap-4">
                                 <div><label className="text-xs font-bold text-gray-600 uppercase">Cantidad</label><input type="number" min="1" value={datosCotizacion.cantidad} onChange={e => setDatosCotizacion({...datosCotizacion, cantidad: parseInt(e.target.value) || 0})} className="w-full p-3 border rounded-xl"/></div>
@@ -380,83 +387,24 @@ const App: React.FC = () => {
                                 <div><label className="text-xs font-bold text-gray-600 uppercase">Teléfono</label><input type="tel" value={datosCotizacion.telefono} onChange={e => setDatosCotizacion({...datosCotizacion, telefono: e.target.value})} className="w-full p-3 border rounded-xl"/></div>
                             </div>
                             <div className="bg-yellow-50 p-3 rounded-lg text-xs text-yellow-800 border border-yellow-200">💡 <b>Descuentos:</b> 5% desde 12 unidades, 15% desde 72 unidades.</div>
-                            <button onClick={generarPDF} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg flex items-center justify-center gap-2 text-lg"><FileText className="w-6 h-6"/> Generar Cotización Estructurada</button>
+                            
+                            {/* BOTÓN VINCULADO CORRECTAMENTE */}
+                            <button onClick={generarPDF} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg flex items-center justify-center gap-2 text-lg">
+                                <FileText className="w-6 h-6"/> Generar Cotización Estructurada
+                            </button>
                         </div>
                     </div>
                 </div>
             )}
 
-            {showPublicarModal && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-8 animate-fade-in overflow-y-auto max-h-[90vh] relative">
-                        <button onClick={cerrarModalEdicion} className="absolute top-4 right-4 text-gray-400"><X className="w-6 h-6" /></button>
-                        <h2 className="text-2xl font-black text-gray-800 mb-6">{modoEdicion ? 'Editar Producto' : 'Publicar Producto'}</h2>
-                        <form onSubmit={handleGuardarProducto} className="space-y-4">
-                            <div><label className="block text-sm font-bold text-gray-700 mb-1">Nombre</label><input type="text" required value={nuevoProducto.nombre} onChange={e => setNuevoProducto({...nuevoProducto, nombre: e.target.value})} className="w-full p-3 border rounded-xl"/></div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div><label className="block text-sm font-bold text-gray-700 mb-1">Precio</label><input type="number" required value={nuevoProducto.precio} onChange={e => setNuevoProducto({...nuevoProducto, precio: e.target.value})} className="w-full p-3 border rounded-xl"/></div>
-                                <div><label className="block text-sm font-bold text-gray-700 mb-1">Categoría</label><select value={nuevoProducto.categoria} onChange={e => setNuevoProducto({...nuevoProducto, categoria: e.target.value})} className="w-full p-3 border rounded-xl bg-white"><option value="general">Nuevo</option><option value="garage">Garage (Usado)</option></select></div>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">Foto</label>
-                                <div className="border-2 border-dashed border-gray-300 rounded-xl p-4 text-center hover:bg-gray-50 transition-colors relative h-32 flex items-center justify-center cursor-pointer">
-                                    <input type="file" accept="image/*" onChange={handleImageSelect} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"/>
-                                    {procesandoImagen ? <span className="animate-pulse text-blue-500 font-bold">Optimización...</span> : previewUrl ? <img src={previewUrl} className="h-full object-contain rounded-lg"/> : <div className="text-gray-400"><UploadCloud className="w-8 h-8 mx-auto mb-1"/><span className="text-sm">Subir Foto</span></div>}
-                                </div>
-                            </div>
-                            <div><label className="block text-sm font-bold text-gray-700 mb-1">Descripción</label><textarea rows={3} value={nuevoProducto.descripcion} onChange={e => setNuevoProducto({...nuevoProducto, descripcion: e.target.value})} className="w-full p-3 border rounded-xl"/></div>
-                            <button type="submit" disabled={loading || procesandoImagen} className="w-full bg-green-600 text-white font-bold py-3 rounded-xl hover:bg-green-700 flex justify-center items-center gap-2"><Save className="w-5 h-5"/> {modoEdicion ? 'Actualizar' : 'Publicar'}</button>
-                        </form>
+            <footer className="bg-[#2D3748] text-gray-400 mt-12 pb-8 text-center text-sm border-t border-gray-700">
+                <div className="container mx-auto py-8 px-4">
+                    <p className="mb-2">&copy; 2025 - 2026 - El Gran Bazar. Pymes y Microempresas a un Click.</p>
+                    <div className="flex justify-center items-center space-x-8 text-sm flex-wrap px-4">
+                        <a href="mailto:microempresasaunclick@gmail.com" className="flex items-center space-x-2 my-2"><Mail className="h-5 w-5 text-blue-400" /><span>microempresasaunclick@gmail.com</span></a>
+                        <a href="tel:+56931761901" className="flex items-center space-x-2 my-2"><Phone className="h-5 w-5 text-green-400" /><span>+569 3176 1901</span></a>
+                        <a href="tel:+56947436919" className="flex items-center space-x-2 my-2"><Phone className="h-5 w-5 text-green-400" /><span>+569 4743 6919</span></a>
                     </div>
-                </div>
-            )}
-
-            {showAuthModal && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-8 animate-fade-in overflow-y-auto max-h-[90vh] relative">
-                        <button onClick={() => { setShowAuthModal(false); limpiarFormularioRegistro(); }} className="absolute top-4 right-4 text-gray-400"><X className="w-6 h-6" /></button>
-                        <h2 className="text-2xl font-black text-blue-800 mb-2 text-center">{authMode === 'login' ? 'Bienvenido' : 'Registro de Empresa'}</h2>
-                        {errorMsg && <div className="bg-red-50 text-red-600 p-3 rounded mb-4 text-sm font-bold">{errorMsg}</div>}
-                        <form onSubmit={handleAuth} className="space-y-4">
-                            <div><label className="text-sm font-bold text-gray-700">Email</label><input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full p-3 border rounded-xl"/></div>
-                            <div><label className="text-sm font-bold text-gray-700">Contraseña</label><input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="w-full p-3 border rounded-xl"/></div>
-                            {authMode === 'register' && (
-                                <div className="space-y-4">
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div><label className="text-xs font-bold text-gray-600 uppercase">Representante</label><input type="text" required value={regNombre} onChange={(e) => setRegNombre(e.target.value)} className="w-full p-3 border rounded-xl"/></div>
-                                        <div><label className="text-xs font-bold text-gray-600 uppercase">Teléfono</label><input type="tel" required value={regTelefono} onChange={(e) => setRegTelefono(e.target.value)} className="w-full p-3 border rounded-xl"/></div>
-                                    </div>
-                                    <div><label className="text-xs font-bold text-gray-600 uppercase">Razón Social</label><input type="text" required value={regEmpresa} onChange={(e) => setRegEmpresa(e.target.value)} className="w-full p-3 border rounded-xl"/></div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div><label className="text-xs font-bold text-gray-600 uppercase">RUT</label><input type="text" required value={regRut} onChange={(e) => setRegRut(e.target.value)} className="w-full p-3 border rounded-xl"/></div>
-                                        <div><label className="text-xs font-bold text-gray-600 uppercase">Dirección</label><input type="text" required value={regDireccion} onChange={(e) => setRegDireccion(e.target.value)} className="w-full p-3 border rounded-xl"/></div>
-                                    </div>
-                                    <div>
-                                        <label className="text-xs font-bold text-gray-600 uppercase">Logo Empresa</label>
-                                        <div className="border-2 border-dashed border-gray-300 rounded-xl p-4 text-center hover:bg-gray-50 relative flex items-center justify-center h-24">
-                                            <input type="file" accept="image/*" onChange={handleLogoSelect} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"/>
-                                            {regLogoPreview ? <div className="flex items-center gap-4"><img src={regLogoPreview} className="h-16 w-16 object-contain border bg-white"/><span className="text-green-600 text-xs font-bold">Logo OK</span></div> : <div className="text-gray-400"><ImageIcon className="w-6 h-6 mx-auto mb-1"/><span className="text-xs">Cargar Logo</span></div>}
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                            <button type="submit" className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 shadow-lg mt-6">{loading ? '...' : (authMode === 'login' ? 'Entrar' : 'Crear Cuenta Empresa')}</button>
-                        </form>
-                        <div className="mt-6 text-center text-sm text-gray-500">
-                            {authMode === 'login' ? <p>¿Eres nuevo? <button onClick={() => setAuthMode('register')} className="text-blue-600 font-bold hover:underline">Registra tu Empresa</button></p> : <p>¿Tienes cuenta? <button onClick={() => setAuthMode('login')} className="text-blue-600 font-bold hover:underline">Ingresa aquí</button></p>}
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            <footer className="bg-[#2D3748] text-gray-400 mt-12 pb-8">
-                <div className="container mx-auto py-8 px-4 text-center text-sm border-b border-gray-700 mb-6">
-                    <p>&copy; 2025 - 2026 - El Gran Bazar. Pymes y Microempresas a un Click.</p>
-                </div>
-                <div className="flex justify-center items-center space-x-8 text-sm flex-wrap px-4">
-                    <a href="mailto:microempresasaunclick@gmail.com" className="flex items-center space-x-2 my-2"><Mail className="h-5 w-5 text-blue-400" /><span>microempresasaunclick@gmail.com</span></a>
-                    <a href="tel:+56931761901" className="flex items-center space-x-2 my-2"><Phone className="h-5 w-5 text-green-400" /><span>+569 3176 1901</span></a>
-                    <a href="tel:+56947436919" className="flex items-center space-x-2 my-2"><Phone className="h-5 w-5 text-green-400" /><span>+569 4743 6919</span></a>
                 </div>
             </footer>
         </div>
