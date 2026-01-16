@@ -17,9 +17,9 @@ const App: React.FC = () => {
     const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
     const [user, setUser] = useState<any>(null);
     
-    // MEMORIA DE EMPRESA (Se inicia leyendo la memoria del navegador)
-    const [empresaData, setEmpresaData] = useState<any>(() => {
-        const guardado = localStorage.getItem('datos_tienda_fija');
+    // MEMORIA DE TIENDA (Esta es la clave para que no se borren los datos al salir)
+    const [perfilTienda, setPerfilTienda] = useState<any>(() => {
+        const guardado = localStorage.getItem('perfil_vendedor_local');
         return guardado ? JSON.parse(guardado) : null;
     });
 
@@ -62,11 +62,12 @@ const App: React.FC = () => {
 
     // --- FUNCIONES ---
 
-    // Esta función fija al vendedor en este computador/navegador
-    const fijarDatosVendedor = (metadata: any) => {
+    // Función para guardar quién es el dueño de este computador/tienda
+    const actualizarPerfilTienda = (metadata: any) => {
         if (metadata) {
-            setEmpresaData(metadata);
-            localStorage.setItem('datos_tienda_fija', JSON.stringify(metadata));
+            console.log("Guardando perfil de tienda:", metadata);
+            localStorage.setItem('perfil_vendedor_local', JSON.stringify(metadata));
+            setPerfilTienda(metadata);
         }
     };
 
@@ -115,16 +116,28 @@ const App: React.FC = () => {
 
     useEffect(() => {
         cargarDatos();
+        
+        // Al cargar, revisar si hay sesión
         supabase.auth.getSession().then(({ data: { session } }) => {
             if (session?.user) { 
                 setUser(session.user);
-                fijarDatosVendedor(session.user.user_metadata); // Guardar datos al iniciar
+                actualizarPerfilTienda(session.user.user_metadata);
             }
         });
+
+        // Escuchar cambios de sesión
         const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
             setUser(session?.user || null);
-            if (session?.user) fijarDatosVendedor(session.user.user_metadata); // Guardar datos al cambiar estado
-            if (event === 'SIGNED_OUT') setVistaActual('home');
+            
+            if (session?.user) {
+                // Si alguien se loguea, actualizamos la "memoria de tienda"
+                actualizarPerfilTienda(session.user.user_metadata);
+            }
+            
+            if (event === 'SIGNED_OUT') {
+                // Si salen, volvemos al home, PERO NO BORRAMOS perfilTienda
+                setVistaActual('home');
+            }
         });
         return () => { authListener.subscription.unsubscribe(); };
     }, []);
@@ -137,7 +150,9 @@ const App: React.FC = () => {
             if (authMode === 'login') {
                 const { data, error } = await supabase.auth.signInWithPassword({ email, password });
                 if (error) throw error;
-                if (data.user) fijarDatosVendedor(data.user.user_metadata);
+                // Guardar datos al loguear
+                if (data.user) actualizarPerfilTienda(data.user.user_metadata);
+                
                 limpiarFormularioRegistro(); 
                 setShowAuthModal(false);
             } else {
@@ -159,16 +174,16 @@ const App: React.FC = () => {
                     const res = supabase.storage.from('imagenes').getPublicUrl(fileName);
                     publicUrl = res.data.publicUrl;
                     
-                    // Actualizar en supabase y localmente
+                    // Actualizar metadata usuario
                     await supabase.auth.updateUser({ data: { empresa_logo_url: publicUrl } });
                 }
 
-                // Guardar localmente para uso inmediato
+                // Crear objeto completo para guardar localmente de inmediato
                 const newMeta = {
                     full_name: regNombre, phone: regTelefono, empresa_nombre: regEmpresa,
                     empresa_rut: regRut, empresa_direccion: regDireccion, empresa_logo_url: publicUrl
                 };
-                fijarDatosVendedor(newMeta);
+                actualizarPerfilTienda(newMeta);
 
                 alert('¡Registro exitoso! Ya puedes ingresar.');
                 setAuthMode('login');
@@ -178,15 +193,18 @@ const App: React.FC = () => {
         finally { setLoading(false); }
     };
 
-    // GENERAR PDF USANDO MEMORIA FIJA DEL VENDEDOR
+    // --- GENERAR PDF CON DATOS PERSISTENTES ---
     const generarPDF = () => {
         if (!productoACotizar) return;
 
-        // AQUÍ ESTÁ LA SOLUCIÓN: Usamos empresaData que persiste aunque cierres sesión
-        const m = empresaData; 
+        // PRIORIDAD DE DATOS: 
+        // 1. Datos del usuario logueado actualmente
+        // 2. Datos guardados en "Memoria de Tienda" (perfilTienda)
+        const m = user?.user_metadata || perfilTienda;
 
         if (!m) {
-            alert("Atención: Aún no se han configurado los datos de la tienda. Por favor inicia sesión como vendedor una vez para guardarlos.");
+            // Si no hay NADA (ni logueado ni memoria), pedir login
+            alert("No se detectan datos de empresa. Por favor, inicia sesión como vendedor una vez para configurar este dispositivo.");
             setShowAuthModal(true);
             return;
         }
@@ -202,36 +220,42 @@ const App: React.FC = () => {
             const subtotalNeto = Math.round(totalBruto / 1.19);
             const iva = totalBruto - subtotalNeto;
 
-            // LOGO
+            // LOGO VENDEDOR
             if (m.empresa_logo_url) {
                 try { doc.addImage(m.empresa_logo_url, 'JPEG', 14, 10, 30, 30); } catch(e) {}
             }
             
-            // DATOS VENDEDOR (Usando 'm' que viene de la memoria persistente)
+            // DATOS VENDEDOR (Cabecera Izquierda)
             doc.setFontSize(14); doc.setTextColor(26, 35, 126);
             doc.text(m.empresa_nombre?.toUpperCase() || "MI EMPRESA", 50, 15);
+            
             doc.setFontSize(9); doc.setTextColor(80);
             doc.text(`RUT: ${m.empresa_rut || "S/R"}`, 50, 20);
             doc.text(m.empresa_direccion || "Dirección no registrada", 50, 25);
             doc.text(`Contacto: ${m.phone || ""}`, 50, 30);
 
+            // TITULO (Cabecera Derecha)
             doc.setFontSize(24); doc.setTextColor(200);
             doc.text("COTIZACIÓN", 140, 20);
             doc.setFontSize(12); doc.setTextColor(26, 35, 126);
             doc.text("FOLIO-" + Math.floor(Math.random() * 10000), 165, 30);
 
+            // CAJAS DE INFORMACIÓN
             doc.setFillColor(245, 247, 251); doc.rect(14, 45, 90, 25, 'F');
             doc.rect(106, 45, 90, 25, 'F');
+            
             doc.setFontSize(8); doc.setTextColor(150);
             doc.text("CLIENTE", 18, 52); doc.text("DETALLES", 110, 52);
+            
             doc.setFontSize(10); doc.setTextColor(0);
             doc.text(datosCotizacion.razonSocial || "Cliente General", 18, 58);
-            doc.text(datosCotizacion.rutEmpresa || "", 18, 63);
+            doc.text(`RUT: ${datosCotizacion.rutEmpresa || ""}`, 18, 63);
             doc.text(datosCotizacion.direccionCliente || "", 18, 68);
             
             doc.text(`Fecha: ${new Date().toLocaleDateString()}`, 110, 58);
-            doc.text(`Válida por: 15 días`, 110, 63);
+            doc.text(`Válida hasta: ${new Date(Date.now() + 15*24*60*60*1000).toLocaleDateString()}`, 110, 63);
 
+            // TABLA PRODUCTOS
             autoTable(doc, {
                 startY: 80,
                 head: [['DESCRIPCIÓN', 'CANT.', 'PRECIO UNIT.', 'TOTAL']],
@@ -239,6 +263,7 @@ const App: React.FC = () => {
                 theme: 'striped', headStyles: { fillColor: [26, 35, 126] }, styles: { fontSize: 9 }
             });
 
+            // TOTALES
             const finalY = (doc as any).lastAutoTable.finalY + 10;
             doc.setFontSize(10);
             doc.text(`Subtotal:`, 140, finalY); doc.text(`$${subtotalNeto.toLocaleString('es-CL')}`, 190, finalY, { align: 'right' });
@@ -246,6 +271,7 @@ const App: React.FC = () => {
             doc.setFontSize(12); doc.setFont("helvetica", "bold"); doc.setTextColor(26, 35, 126);
             doc.text(`Total:`, 140, finalY + 14); doc.text(`$${totalBruto.toLocaleString('es-CL')}`, 190, finalY + 14, { align: 'right' });
 
+            // PIE DE FIRMA
             doc.setFontSize(8); doc.setFont("helvetica", "normal"); doc.setTextColor(150);
             doc.text(`Autorizado por: ${m.full_name || "Vendedor"}`, 190, 285, { align: 'right' });
             
@@ -357,7 +383,7 @@ const App: React.FC = () => {
                             <div>
                                 <h1 className="text-3xl font-black text-gray-800">Panel de Control</h1>
                                 <p className="text-gray-500">
-                                    Gestionando como: <span className="font-bold text-blue-600 uppercase">{user.user_metadata?.empresa_nombre || empresaData?.empresa_nombre}</span>
+                                    Gestionando como: <span className="font-bold text-blue-600 uppercase">{user.user_metadata?.empresa_nombre || perfilTienda?.empresa_nombre}</span>
                                 </p>
                             </div>
                             <button onClick={() => { cerrarModalEdicion(); setShowPublicarModal(true); }} className="bg-green-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg hover:bg-green-700 flex items-center gap-2 transition-all active:scale-95"><Plus className="w-5 h-5" /> Nuevo Producto</button>
