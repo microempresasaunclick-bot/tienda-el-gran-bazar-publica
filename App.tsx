@@ -17,7 +17,7 @@ const App: React.FC = () => {
     const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
     const [user, setUser] = useState<any>(null);
     
-    // MEMORIA DE TIENDA (Esta es la clave para que no se borren los datos al salir)
+    // MEMORIA DE TIENDA (Persistencia)
     const [perfilTienda, setPerfilTienda] = useState<any>(() => {
         const guardado = localStorage.getItem('perfil_vendedor_local');
         return guardado ? JSON.parse(guardado) : null;
@@ -62,10 +62,8 @@ const App: React.FC = () => {
 
     // --- FUNCIONES ---
 
-    // Función para guardar quién es el dueño de este computador/tienda
     const actualizarPerfilTienda = (metadata: any) => {
         if (metadata) {
-            console.log("Guardando perfil de tienda:", metadata);
             localStorage.setItem('perfil_vendedor_local', JSON.stringify(metadata));
             setPerfilTienda(metadata);
         }
@@ -116,28 +114,16 @@ const App: React.FC = () => {
 
     useEffect(() => {
         cargarDatos();
-        
-        // Al cargar, revisar si hay sesión
         supabase.auth.getSession().then(({ data: { session } }) => {
             if (session?.user) { 
                 setUser(session.user);
                 actualizarPerfilTienda(session.user.user_metadata);
             }
         });
-
-        // Escuchar cambios de sesión
         const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
             setUser(session?.user || null);
-            
-            if (session?.user) {
-                // Si alguien se loguea, actualizamos la "memoria de tienda"
-                actualizarPerfilTienda(session.user.user_metadata);
-            }
-            
-            if (event === 'SIGNED_OUT') {
-                // Si salen, volvemos al home, PERO NO BORRAMOS perfilTienda
-                setVistaActual('home');
-            }
+            if (session?.user) actualizarPerfilTienda(session.user.user_metadata);
+            if (event === 'SIGNED_OUT') setVistaActual('home');
         });
         return () => { authListener.subscription.unsubscribe(); };
     }, []);
@@ -150,9 +136,7 @@ const App: React.FC = () => {
             if (authMode === 'login') {
                 const { data, error } = await supabase.auth.signInWithPassword({ email, password });
                 if (error) throw error;
-                // Guardar datos al loguear
                 if (data.user) actualizarPerfilTienda(data.user.user_metadata);
-                
                 limpiarFormularioRegistro(); 
                 setShowAuthModal(false);
             } else {
@@ -173,12 +157,9 @@ const App: React.FC = () => {
                     await supabase.storage.from('imagenes').upload(fileName, regLogo);
                     const res = supabase.storage.from('imagenes').getPublicUrl(fileName);
                     publicUrl = res.data.publicUrl;
-                    
-                    // Actualizar metadata usuario
                     await supabase.auth.updateUser({ data: { empresa_logo_url: publicUrl } });
                 }
 
-                // Crear objeto completo para guardar localmente de inmediato
                 const newMeta = {
                     full_name: regNombre, phone: regTelefono, empresa_nombre: regEmpresa,
                     empresa_rut: regRut, empresa_direccion: regDireccion, empresa_logo_url: publicUrl
@@ -193,18 +174,14 @@ const App: React.FC = () => {
         finally { setLoading(false); }
     };
 
-    // --- GENERAR PDF CON DATOS PERSISTENTES ---
     const generarPDF = () => {
         if (!productoACotizar) return;
 
-        // PRIORIDAD DE DATOS: 
-        // 1. Datos del usuario logueado actualmente
-        // 2. Datos guardados en "Memoria de Tienda" (perfilTienda)
+        // Recuperar datos: 1. Usuario activo, 2. Memoria de tienda
         const m = user?.user_metadata || perfilTienda;
 
         if (!m) {
-            // Si no hay NADA (ni logueado ni memoria), pedir login
-            alert("No se detectan datos de empresa. Por favor, inicia sesión como vendedor una vez para configurar este dispositivo.");
+            alert("No se encontraron datos de vendedor. Por favor, inicia sesión una vez para configurar la tienda.");
             setShowAuthModal(true);
             return;
         }
@@ -220,42 +197,33 @@ const App: React.FC = () => {
             const subtotalNeto = Math.round(totalBruto / 1.19);
             const iva = totalBruto - subtotalNeto;
 
-            // LOGO VENDEDOR
             if (m.empresa_logo_url) {
                 try { doc.addImage(m.empresa_logo_url, 'JPEG', 14, 10, 30, 30); } catch(e) {}
             }
             
-            // DATOS VENDEDOR (Cabecera Izquierda)
             doc.setFontSize(14); doc.setTextColor(26, 35, 126);
-            doc.text(m.empresa_nombre?.toUpperCase() || "MI EMPRESA", 50, 15);
-            
+            doc.text(m.empresa_nombre?.toUpperCase() || "VENDEDOR", 50, 15);
             doc.setFontSize(9); doc.setTextColor(80);
             doc.text(`RUT: ${m.empresa_rut || "S/R"}`, 50, 20);
             doc.text(m.empresa_direccion || "Dirección no registrada", 50, 25);
             doc.text(`Contacto: ${m.phone || ""}`, 50, 30);
 
-            // TITULO (Cabecera Derecha)
             doc.setFontSize(24); doc.setTextColor(200);
             doc.text("COTIZACIÓN", 140, 20);
             doc.setFontSize(12); doc.setTextColor(26, 35, 126);
             doc.text("FOLIO-" + Math.floor(Math.random() * 10000), 165, 30);
 
-            // CAJAS DE INFORMACIÓN
             doc.setFillColor(245, 247, 251); doc.rect(14, 45, 90, 25, 'F');
             doc.rect(106, 45, 90, 25, 'F');
-            
             doc.setFontSize(8); doc.setTextColor(150);
             doc.text("CLIENTE", 18, 52); doc.text("DETALLES", 110, 52);
-            
             doc.setFontSize(10); doc.setTextColor(0);
             doc.text(datosCotizacion.razonSocial || "Cliente General", 18, 58);
-            doc.text(`RUT: ${datosCotizacion.rutEmpresa || ""}`, 18, 63);
+            doc.text(datosCotizacion.rutEmpresa || "", 18, 63);
             doc.text(datosCotizacion.direccionCliente || "", 18, 68);
-            
             doc.text(`Fecha: ${new Date().toLocaleDateString()}`, 110, 58);
-            doc.text(`Válida hasta: ${new Date(Date.now() + 15*24*60*60*1000).toLocaleDateString()}`, 110, 63);
+            doc.text(`Válida por: 15 días`, 110, 63);
 
-            // TABLA PRODUCTOS
             autoTable(doc, {
                 startY: 80,
                 head: [['DESCRIPCIÓN', 'CANT.', 'PRECIO UNIT.', 'TOTAL']],
@@ -263,7 +231,6 @@ const App: React.FC = () => {
                 theme: 'striped', headStyles: { fillColor: [26, 35, 126] }, styles: { fontSize: 9 }
             });
 
-            // TOTALES
             const finalY = (doc as any).lastAutoTable.finalY + 10;
             doc.setFontSize(10);
             doc.text(`Subtotal:`, 140, finalY); doc.text(`$${subtotalNeto.toLocaleString('es-CL')}`, 190, finalY, { align: 'right' });
@@ -271,7 +238,6 @@ const App: React.FC = () => {
             doc.setFontSize(12); doc.setFont("helvetica", "bold"); doc.setTextColor(26, 35, 126);
             doc.text(`Total:`, 140, finalY + 14); doc.text(`$${totalBruto.toLocaleString('es-CL')}`, 190, finalY + 14, { align: 'right' });
 
-            // PIE DE FIRMA
             doc.setFontSize(8); doc.setFont("helvetica", "normal"); doc.setTextColor(150);
             doc.text(`Autorizado por: ${m.full_name || "Vendedor"}`, 190, 285, { align: 'right' });
             
