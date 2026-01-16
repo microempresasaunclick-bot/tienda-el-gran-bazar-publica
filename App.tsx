@@ -139,6 +139,7 @@ const App: React.FC = () => {
         finally { setLoading(false); }
     };
 
+    // FUNCIÓN GENERAR PDF CON ESTRUCTURA PROFESIONAL
     const generarPDF = () => {
         if (!productoACotizar || !user) return;
         const doc = new jsPDF();
@@ -152,8 +153,10 @@ const App: React.FC = () => {
         const subtotalNeto = Math.round(totalBruto / 1.19);
         const iva = totalBruto - subtotalNeto;
 
-        // Estructura de PDF Profesional
-        if (m.empresa_logo_url) doc.addImage(m.empresa_logo_url, 'JPEG', 14, 10, 30, 30);
+        // Cabezal Corporativo Vendedor
+        if (m.empresa_logo_url) {
+            try { doc.addImage(m.empresa_logo_url, 'JPEG', 14, 10, 30, 30); } catch(e) {}
+        }
         
         doc.setFontSize(14); doc.setTextColor(26, 35, 126);
         doc.text(m.empresa_nombre?.toUpperCase() || "VENDEDOR", 50, 15);
@@ -168,6 +171,7 @@ const App: React.FC = () => {
         doc.setFontSize(12); doc.setTextColor(26, 35, 126);
         doc.text("COT-1500", 165, 30);
 
+        // Bloques Cliente y Detalles
         doc.setFillColor(245, 247, 251); doc.rect(14, 45, 90, 25, 'F');
         doc.rect(106, 45, 90, 25, 'F');
         doc.setFontSize(8); doc.setTextColor(150);
@@ -194,6 +198,7 @@ const App: React.FC = () => {
 
         doc.setFontSize(8); doc.setFont("helvetica", "normal"); doc.setTextColor(150);
         doc.text(`Autorizado por: ${m.full_name || "Vendedor"}`, 190, 285, { align: 'right' });
+        
         doc.save(`Cotizacion_${m.empresa_nombre}.pdf`);
         setProductoACotizar(null);
     };
@@ -217,7 +222,7 @@ const App: React.FC = () => {
                 const compressed = await comprimirImagen(e.target.files[0]);
                 setArchivoImagen(compressed);
                 setPreviewUrl(URL.createObjectURL(compressed));
-            } catch (error) { alert("Error en imagen"); } 
+            } catch (error) { alert("Error imagen"); } 
             finally { setProcesandoImagen(false); }
         }
     };
@@ -283,7 +288,6 @@ const App: React.FC = () => {
                             </div>
                         ) : (
                             <div className="flex gap-2">
-                                {/* BOTONES REVISADOS PARA ACTIVAR MODALES */}
                                 <button onClick={() => { setAuthMode('login'); setShowAuthModal(true); }} className="text-blue-600 px-3 py-2 font-bold border border-blue-100 rounded-lg hover:bg-blue-50 transition-colors flex items-center gap-1">
                                     <LogIn className="w-4 h-4" /> Entrar
                                 </button>
@@ -301,7 +305,7 @@ const App: React.FC = () => {
                     <div className="container mx-auto px-4 py-8">
                         <div className="flex justify-between items-center mb-8">
                             <div><h1 className="text-3xl font-black text-gray-800">Panel de Control</h1><p className="text-gray-500">Bienvenido, {user.user_metadata?.full_name}</p></div>
-                            <button onClick={() => { cerrarModalEdicion(); setShowPublicarModal(true); }} className="bg-green-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg hover:bg-green-700 flex items-center gap-2"><Plus className="w-5 h-5" /> Nuevo Producto</button>
+                            <button onClick={() => { cerrarModalEdicion(); setShowPublicarModal(true); }} className="bg-green-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg hover:bg-green-700 flex items-center gap-2 transition-all active:scale-95"><Plus className="w-5 h-5" /> Nuevo Producto</button>
                         </div>
                         <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
                             <table className="w-full text-left">
@@ -351,7 +355,7 @@ const App: React.FC = () => {
                 )}
             </main>
 
-            {/* MODAL COTIZACION */}
+            {/* MODAL SOLICITUD COTIZACION */}
             {productoACotizar && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
                     <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg p-8 animate-fade-in overflow-y-auto max-h-[90vh] relative">
@@ -364,14 +368,14 @@ const App: React.FC = () => {
                         </div>
                         <div className="space-y-4">
                             <div className="grid grid-cols-2 gap-4">
-                                <div><label className="text-xs font-bold text-gray-600 uppercase mb-1 block">Cantidad</label><input type="number" min="1" value={datosCotizacion.cantidad} onChange={e => setDatosCotizacion({...datosCotizacion, cantidad: parseInt(e.target.value) || 0})} className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-blue-400 outline-none transition-all"/></div>
-                                <div><label className="text-xs font-bold text-gray-600 uppercase mb-1 block">RUT Empresa</label><input type="text" value={datosCotizacion.rutEmpresa} onChange={e => setDatosCotizacion({...datosCotizacion, rutEmpresa: e.target.value})} className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-blue-400 outline-none transition-all" placeholder="76.xxx.xxx-k"/></div>
+                                <div><label className="text-xs font-bold text-gray-600 uppercase mb-1 block">Cantidad</label><input type="number" min="1" value={datosCotizacion.cantidad} onChange={e => setDatosCotizacion({...datosCotizacion, cantidad: parseInt(e.target.value) || 0})} className="w-full p-3 border rounded-xl outline-none"/></div>
+                                <div><label className="text-xs font-bold text-gray-600 uppercase mb-1 block">RUT Empresa</label><input type="text" value={datosCotizacion.rutEmpresa} onChange={e => setDatosCotizacion({...datosCotizacion, rutEmpresa: e.target.value})} className="w-full p-3 border rounded-xl outline-none" placeholder="76.xxx.xxx-k"/></div>
                             </div>
-                            <div><label className="text-xs font-bold text-gray-600 uppercase mb-1 block">Razón Social</label><input type="text" value={datosCotizacion.razonSocial} onChange={e => setDatosCotizacion({...datosCotizacion, razonSocial: e.target.value})} className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-blue-400 outline-none transition-all" placeholder="Nombre cliente"/></div>
-                            <div><label className="text-xs font-bold text-gray-600 uppercase mb-1 block">Dirección</label><input type="text" value={datosCotizacion.direccionCliente} onChange={e => setDatosCotizacion({...datosCotizacion, direccionCliente: e.target.value})} className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-blue-400 outline-none transition-all" placeholder="Dirección cliente"/></div>
+                            <div><label className="text-xs font-bold text-gray-600 uppercase mb-1 block">Razón Social</label><input type="text" value={datosCotizacion.razonSocial} onChange={e => setDatosCotizacion({...datosCotizacion, razonSocial: e.target.value})} className="w-full p-3 border rounded-xl outline-none" placeholder="Nombre cliente"/></div>
+                            <div><label className="text-xs font-bold text-gray-600 uppercase mb-1 block">Dirección</label><input type="text" value={datosCotizacion.direccionCliente} onChange={e => setDatosCotizacion({...datosCotizacion, direccionCliente: e.target.value})} className="w-full p-3 border rounded-xl outline-none" placeholder="Dirección cliente"/></div>
                             <div className="grid grid-cols-2 gap-4">
-                                <div><label className="text-xs font-bold text-gray-600 uppercase mb-1 block">Email Contacto</label><input type="email" value={datosCotizacion.emailContacto} onChange={e => setDatosCotizacion({...datosCotizacion, emailContacto: e.target.value})} className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-blue-400 outline-none transition-all"/></div>
-                                <div><label className="text-xs font-bold text-gray-600 uppercase mb-1 block">Teléfono</label><input type="tel" value={datosCotizacion.telefono} onChange={e => setDatosCotizacion({...datosCotizacion, telefono: e.target.value})} className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-blue-400 outline-none transition-all" placeholder="+569..."/></div>
+                                <div><label className="text-xs font-bold text-gray-600 uppercase mb-1 block">Email Contacto</label><input type="email" value={datosCotizacion.emailContacto} onChange={e => setDatosCotizacion({...datosCotizacion, emailContacto: e.target.value})} className="w-full p-3 border rounded-xl outline-none"/></div>
+                                <div><label className="text-xs font-bold text-gray-600 uppercase mb-1 block">Teléfono</label><input type="tel" value={datosCotizacion.telefono} onChange={e => setDatosCotizacion({...datosCotizacion, telefono: e.target.value})} className="w-full p-3 border rounded-xl outline-none" placeholder="+569..."/></div>
                             </div>
                             <div className="bg-yellow-50 p-3 rounded-lg text-xs text-yellow-800 border border-yellow-200">💡 <b>Descuentos:</b> 5% desde 12 unidades, 15% desde 72 unidades.</div>
                             <button onClick={generarPDF} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg flex items-center justify-center gap-2 text-lg transition-all active:scale-95"><FileText className="w-6 h-6"/> Generar Cotización Estructurada</button>
@@ -400,7 +404,7 @@ const App: React.FC = () => {
                                 </div>
                             </div>
                             <div><label className="block text-sm font-bold text-gray-700 mb-1">Descripción</label><textarea rows={3} value={nuevoProducto.descripcion} onChange={e => setNuevoProducto({...nuevoProducto, descripcion: e.target.value})} className="w-full p-3 border rounded-xl"/></div>
-                            <button type="submit" disabled={loading || procesandoImagen} className="w-full bg-green-600 text-white font-bold py-3 rounded-xl hover:bg-green-700 shadow-md flex justify-center items-center gap-2 transition-all">{loading ? 'Procesando...' : (modoEdicion ? 'Actualizar Producto' : 'Publicar Ahora')}</button>
+                            <button type="submit" disabled={loading || procesandoImagen} className="w-full bg-green-600 text-white font-bold py-3 rounded-xl hover:bg-green-700 flex justify-center items-center gap-2 transition-all shadow-md">{loading ? 'Procesando...' : (modoEdicion ? 'Actualizar Producto' : 'Publicar Ahora')}</button>
                         </form>
                     </div>
                 </div>
@@ -412,25 +416,25 @@ const App: React.FC = () => {
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-8 animate-fade-in overflow-y-auto max-h-[90vh] relative">
                         <button onClick={() => { setShowAuthModal(false); limpiarFormularioRegistro(); }} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"><X className="w-6 h-6" /></button>
                         <h2 className="text-2xl font-black text-blue-800 mb-2 text-center tracking-tight">{authMode === 'login' ? 'Bienvenido' : 'Registro de Empresa'}</h2>
-                        <p className="text-gray-500 text-center mb-6">{authMode === 'login' ? 'Ingresa a tu cuenta para gestionar productos' : 'Configura tu perfil comercial único'}</p>
-                        {errorMsg && <div className="bg-red-50 text-red-600 p-3 rounded-xl mb-4 text-sm font-bold text-center border border-red-100">{errorMsg}</div>}
+                        <p className="text-gray-500 text-center mb-6">{authMode === 'login' ? 'Ingresa a tu cuenta' : 'Configura tu perfil comercial único'}</p>
+                        {errorMsg && <div className="bg-red-50 text-red-600 p-3 rounded-xl mb-4 text-sm font-bold text-center">{errorMsg}</div>}
                         <form onSubmit={handleAuth} className="space-y-4">
-                            <div><label className="text-sm font-bold text-gray-700 mb-1 block">Email</label><input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-blue-400 outline-none transition-all" placeholder="vendedor@empresa.cl"/></div>
-                            <div><label className="text-sm font-bold text-gray-700 mb-1 block">Contraseña</label><input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-blue-400 outline-none transition-all" placeholder="••••••••"/></div>
+                            <div><label className="text-sm font-bold text-gray-700 mb-1 block">Email</label><input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full p-3 border rounded-xl outline-none" placeholder="vendedor@empresa.cl"/></div>
+                            <div><label className="text-sm font-bold text-gray-700 mb-1 block">Contraseña</label><input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="w-full p-3 border rounded-xl outline-none" placeholder="••••••••"/></div>
                             {authMode === 'register' && (
                                 <div className="space-y-4 pt-2 border-t border-gray-100 mt-4">
                                     <div className="grid grid-cols-2 gap-4">
-                                        <div><label className="text-xs font-bold text-gray-600 uppercase mb-1 block">Representante</label><input type="text" required value={regNombre} onChange={(e) => setRegNombre(e.target.value)} className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-blue-400 outline-none transition-all"/></div>
-                                        <div><label className="text-xs font-bold text-gray-600 uppercase mb-1 block">Teléfono</label><input type="tel" required value={regTelefono} onChange={(e) => setRegTelefono(e.target.value)} className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-blue-400 outline-none transition-all" placeholder="+569..."/></div>
+                                        <div><label className="text-xs font-bold text-gray-600 uppercase mb-1 block">Representante</label><input type="text" required value={regNombre} onChange={(e) => setRegNombre(e.target.value)} className="w-full p-3 border rounded-xl outline-none"/></div>
+                                        <div><label className="text-xs font-bold text-gray-600 uppercase mb-1 block">Teléfono</label><input type="tel" required value={regTelefono} onChange={(e) => setRegTelefono(e.target.value)} className="w-full p-3 border rounded-xl outline-none" placeholder="+569..."/></div>
                                     </div>
-                                    <div><label className="text-xs font-bold text-gray-600 uppercase mb-1 block">Razón Social</label><input type="text" required value={regEmpresa} onChange={(e) => setRegEmpresa(e.target.value)} className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-blue-400 outline-none transition-all" placeholder="Nombre Legal Empresa"/></div>
+                                    <div><label className="text-xs font-bold text-gray-600 uppercase mb-1 block">Razón Social</label><input type="text" required value={regEmpresa} onChange={(e) => setRegEmpresa(e.target.value)} className="w-full p-3 border rounded-xl outline-none" placeholder="Nombre Legal Empresa"/></div>
                                     <div className="grid grid-cols-2 gap-4">
-                                        <div><label className="text-xs font-bold text-gray-600 uppercase mb-1 block">RUT Empresa</label><input type="text" required value={regRut} onChange={(e) => setRegRut(e.target.value)} className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-blue-400 outline-none transition-all" placeholder="77.xxx.xxx-k"/></div>
-                                        <div><label className="text-xs font-bold text-gray-600 uppercase mb-1 block">Dirección Comercial</label><input type="text" required value={regDireccion} onChange={(e) => setRegDireccion(e.target.value)} className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-blue-400 outline-none transition-all"/></div>
+                                        <div><label className="text-xs font-bold text-gray-600 uppercase mb-1 block">RUT Empresa</label><input type="text" required value={regRut} onChange={(e) => setRegRut(e.target.value)} className="w-full p-3 border rounded-xl outline-none" placeholder="77.xxx.xxx-k"/></div>
+                                        <div><label className="text-xs font-bold text-gray-600 uppercase mb-1 block">Dirección Comercial</label><input type="text" required value={regDireccion} onChange={(e) => setRegDireccion(e.target.value)} className="w-full p-3 border rounded-xl outline-none"/></div>
                                     </div>
                                     <div>
                                         <label className="text-xs font-bold text-gray-600 uppercase mb-1 block">Logo Corporativo</label>
-                                        <div className="border-2 border-dashed border-gray-300 rounded-xl p-4 text-center hover:bg-gray-50 relative flex items-center justify-center h-24 transition-colors cursor-pointer">
+                                        <div className="border-2 border-dashed border-gray-300 rounded-xl p-4 text-center hover:bg-gray-50 relative flex items-center justify-center h-24 cursor-pointer transition-colors">
                                             <input type="file" accept="image/*" onChange={handleLogoSelect} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"/>
                                             {regLogoPreview ? <div className="flex items-center gap-4"><img src={regLogoPreview} className="h-16 w-16 object-contain border bg-white rounded-lg shadow-sm"/><span className="text-green-600 text-xs font-bold">Logo OK</span></div> : <div className="text-gray-400 flex flex-col items-center"><ImageIcon className="w-6 h-6 mb-1"/><span className="text-xs">Subir Logo (JPG/PNG)</span></div>}
                                         </div>
@@ -446,14 +450,13 @@ const App: React.FC = () => {
                 </div>
             )}
 
-            {/* FOOTER */}
             <footer className="bg-[#2D3748] text-gray-400 mt-12 pb-8 text-center text-sm border-t border-gray-700">
                 <div className="container mx-auto py-8 px-4">
                     <p className="mb-2">&copy; 2025 - 2026 - El Gran Bazar. Pymes y Microempresas a un Click.</p>
                     <div className="flex justify-center items-center space-x-8 text-sm flex-wrap px-4">
-                        <a href="mailto:microempresasaunclick@gmail.com" className="flex items-center space-x-2 my-2 hover:text-white transition-colors"><Mail className="h-5 w-5 text-blue-400" /><span>microempresasaunclick@gmail.com</span></a>
-                        <a href="tel:+56931761901" className="flex items-center space-x-2 my-2 hover:text-white transition-colors"><Phone className="h-5 w-5 text-green-400" /><span>+569 3176 1901</span></a>
-                        <a href="tel:+56947436919" className="flex items-center space-x-2 my-2 hover:text-white transition-colors"><Phone className="h-5 w-5 text-green-400" /><span>+569 4743 6919</span></a>
+                        <a href="mailto:microempresasaunclick@gmail.com" className="flex items-center space-x-2 my-2 hover:text-white transition-all"><Mail className="h-5 w-5 text-blue-400" /><span>microempresasaunclick@gmail.com</span></a>
+                        <a href="tel:+56931761901" className="flex items-center space-x-2 my-2 hover:text-white transition-all"><Phone className="h-5 w-5 text-green-400" /><span>+569 3176 1901</span></a>
+                        <a href="tel:+56947436919" className="flex items-center space-x-2 my-2 hover:text-white transition-all"><Phone className="h-5 w-5 text-green-400" /><span>+569 4743 6919</span></a>
                     </div>
                 </div>
             </footer>
