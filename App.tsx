@@ -12,13 +12,21 @@ const App: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [errorMsg, setErrorMsg] = useState('');
     
+    // Auth & User
     const [showAuthModal, setShowAuthModal] = useState(false);
     const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
     const [user, setUser] = useState<any>(null);
-    const [userMetadata, setUserMetadata] = useState<any>(null); // Nuevo estado para datos persistentes
+    
+    // MEMORIA DE EMPRESA (Persistente aunque cierres sesión)
+    const [empresaData, setEmpresaData] = useState<any>(() => {
+        const guardado = localStorage.getItem('datos_empresa_local');
+        return guardado ? JSON.parse(guardado) : null;
+    });
+
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     
+    // Formulario Registro
     const [regNombre, setRegNombre] = useState('');
     const [regTelefono, setRegTelefono] = useState('');
     const [regEmpresa, setRegEmpresa] = useState('');
@@ -27,13 +35,17 @@ const App: React.FC = () => {
     const [regLogo, setRegLogo] = useState<File | null>(null);
     const [regLogoPreview, setRegLogoPreview] = useState('');
 
-    const [vistaActual, setVistaActual] = useState<'home' | 'panel'>('home'); // Siempre inicia en Home
+    // Vistas & Modales
+    const [vistaActual, setVistaActual] = useState<'home' | 'panel'>('home');
     const [showPublicarModal, setShowPublicarModal] = useState(false);
+    
+    // Cotización
     const [productoACotizar, setProductoACotizar] = useState<any>(null);
     const [datosCotizacion, setDatosCotizacion] = useState({
         cantidad: 12, rutEmpresa: '', razonSocial: '', emailContacto: '', telefono: '', direccionCliente: ''
     });
 
+    // Edición
     const [modoEdicion, setModoEdicion] = useState(false);
     const [idProductoEditar, setIdProductoEditar] = useState<number | null>(null);
     const [archivoImagen, setArchivoImagen] = useState<File | null>(null);
@@ -50,17 +62,10 @@ const App: React.FC = () => {
 
     // --- FUNCIONES ---
 
-    const guardarDatosPersistentes = (metadata: any) => {
+    const actualizarMemoriaEmpresa = (metadata: any) => {
         if (metadata) {
-            localStorage.setItem('empresa_data', JSON.stringify(metadata));
-            setUserMetadata(metadata);
-        }
-    };
-
-    const recuperarDatosPersistentes = () => {
-        const data = localStorage.getItem('empresa_data');
-        if (data) {
-            setUserMetadata(JSON.parse(data));
+            setEmpresaData(metadata);
+            localStorage.setItem('datos_empresa_local', JSON.stringify(metadata));
         }
     };
 
@@ -109,25 +114,16 @@ const App: React.FC = () => {
 
     useEffect(() => {
         cargarDatos();
-        recuperarDatosPersistentes(); // Cargar datos del vendedor al inicio si existen
-
         supabase.auth.getSession().then(({ data: { session } }) => {
             if (session?.user) { 
                 setUser(session.user);
-                guardarDatosPersistentes(session.user.user_metadata);
+                actualizarMemoriaEmpresa(session.user.user_metadata);
             }
         });
-
         const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
             setUser(session?.user || null);
-            if (event === 'SIGNED_IN' && session?.user) {
-                guardarDatosPersistentes(session.user.user_metadata);
-                // NO cambiamos a panel automáticamente para mantenerte en la tienda
-            }
-            if (event === 'SIGNED_OUT') {
-                setVistaActual('home');
-                // No borramos userMetadata para que puedas seguir emitiendo PDFs con tus datos
-            }
+            if (session?.user) actualizarMemoriaEmpresa(session.user.user_metadata);
+            if (event === 'SIGNED_OUT') setVistaActual('home');
         });
         return () => { authListener.subscription.unsubscribe(); };
     }, []);
@@ -140,7 +136,7 @@ const App: React.FC = () => {
             if (authMode === 'login') {
                 const { data, error } = await supabase.auth.signInWithPassword({ email, password });
                 if (error) throw error;
-                if(data.user) guardarDatosPersistentes(data.user.user_metadata);
+                if (data.user) actualizarMemoriaEmpresa(data.user.user_metadata);
                 limpiarFormularioRegistro(); 
                 setShowAuthModal(false);
             } else {
@@ -154,13 +150,25 @@ const App: React.FC = () => {
                     }
                 });
                 if (authError) throw authError;
+                
+                let publicUrl = '';
                 if (regLogo && authData.user) {
                     const fileName = `logos/${authData.user.id}.jpg`;
                     await supabase.storage.from('imagenes').upload(fileName, regLogo);
-                    const { data: { publicUrl } } = supabase.storage.from('imagenes').getPublicUrl(fileName);
-                    const updateRes = await supabase.auth.updateUser({ data: { empresa_logo_url: publicUrl } });
-                    if (updateRes.data.user) guardarDatosPersistentes(updateRes.data.user.user_metadata);
+                    const res = supabase.storage.from('imagenes').getPublicUrl(fileName);
+                    publicUrl = res.data.publicUrl;
+                    
+                    // Actualizar metadata inmediatamente
+                    await supabase.auth.updateUser({ data: { empresa_logo_url: publicUrl } });
                 }
+
+                // Guardar localmente para uso inmediato
+                const newMeta = {
+                    full_name: regNombre, phone: regTelefono, empresa_nombre: regEmpresa,
+                    empresa_rut: regRut, empresa_direccion: regDireccion, empresa_logo_url: publicUrl
+                };
+                actualizarMemoriaEmpresa(newMeta);
+
                 alert('¡Registro exitoso! Ya puedes ingresar.');
                 setAuthMode('login');
                 limpiarFormularioRegistro(); 
@@ -169,25 +177,21 @@ const App: React.FC = () => {
         finally { setLoading(false); }
     };
 
+    // GENERAR PDF USANDO MEMORIA PERSISTENTE
     const generarPDF = () => {
         if (!productoACotizar) return;
 
+        // Recuperar datos: 1ro del usuario activo, 2do de la memoria local
+        const m = user?.user_metadata || empresaData;
+
+        if (!m) {
+            alert("No se encontraron datos de vendedor. Por favor, inicia sesión al menos una vez para configurar tu empresa.");
+            setShowAuthModal(true);
+            return;
+        }
+
         try {
             const doc = new jsPDF();
-            // Prioridad: 1. Usuario Logueado, 2. Memoria Local, 3. Genérico
-            let m = user?.user_metadata || userMetadata;
-            
-            if (!m) {
-                // Fallback de emergencia si es un visitante totalmente nuevo
-                m = {
-                    empresa_nombre: "EL GRAN BAZAR",
-                    empresa_rut: "77.777.777-7",
-                    empresa_direccion: "Santiago, Chile",
-                    full_name: "Ventas",
-                    phone: "+569 0000 0000"
-                };
-                alert("Nota: Estás generando una cotización con datos genéricos porque no se detectó una sesión de vendedor previa.");
-            }
             
             let unitarioBruto = productoACotizar.precio;
             if (datosCotizacion.cantidad >= 72) unitarioBruto = Math.round(unitarioBruto * 0.85); 
@@ -197,12 +201,14 @@ const App: React.FC = () => {
             const subtotalNeto = Math.round(totalBruto / 1.19);
             const iva = totalBruto - subtotalNeto;
 
+            // LOGO
             if (m.empresa_logo_url) {
                 try { doc.addImage(m.empresa_logo_url, 'JPEG', 14, 10, 30, 30); } catch(e) {}
             }
             
+            // DATOS VENDEDOR (Usando 'm' que viene de la memoria persistente)
             doc.setFontSize(14); doc.setTextColor(26, 35, 126);
-            doc.text(m.empresa_nombre?.toUpperCase() || "VENDEDOR", 50, 15);
+            doc.text(m.empresa_nombre?.toUpperCase() || "MI EMPRESA", 50, 15);
             doc.setFontSize(9); doc.setTextColor(80);
             doc.text(`RUT: ${m.empresa_rut || "S/R"}`, 50, 20);
             doc.text(m.empresa_direccion || "Dirección no registrada", 50, 25);
@@ -219,7 +225,7 @@ const App: React.FC = () => {
             doc.text("CLIENTE", 18, 52); doc.text("DETALLES", 110, 52);
             doc.setFontSize(10); doc.setTextColor(0);
             doc.text(datosCotizacion.razonSocial || "Cliente General", 18, 58);
-            doc.text(`RUT: ${datosCotizacion.rutEmpresa || ""}`, 18, 63);
+            doc.text(datosCotizacion.rutEmpresa || "", 18, 63);
             doc.text(datosCotizacion.direccionCliente || "", 18, 68);
             
             doc.text(`Fecha: ${new Date().toLocaleDateString()}`, 110, 58);
@@ -350,7 +356,7 @@ const App: React.FC = () => {
                             <div>
                                 <h1 className="text-3xl font-black text-gray-800">Panel de Control</h1>
                                 <p className="text-gray-500">
-                                    Gestionando como: <span className="font-bold text-blue-600">{user.user_metadata?.empresa_nombre || user.email}</span>
+                                    Gestionando como: <span className="font-bold text-blue-600 uppercase">{user.user_metadata?.empresa_nombre || empresaData?.empresa_nombre}</span>
                                 </p>
                             </div>
                             <button onClick={() => { cerrarModalEdicion(); setShowPublicarModal(true); }} className="bg-green-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg hover:bg-green-700 flex items-center gap-2 transition-all active:scale-95"><Plus className="w-5 h-5" /> Nuevo Producto</button>
