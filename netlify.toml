@@ -1,0 +1,41 @@
+# ==========================================================
+# CONFIGURACIÓN MAESTRA: El Gran Bazar (App Pública)
+# Stack: React + Vite + TypeScript
+# ==========================================================
+
+[build]
+  # Vite compila por defecto en la carpeta "dist"
+  publish = "dist"
+  # Comando de compilación basado en tu package.json
+  command = "npm run build"
+
+# ----------------------------------------------------------
+# REGLAS SPA (Single Page Application)
+# ----------------------------------------------------------
+# ESTO ES CRÍTICO: Evita el error 404 al recargar páginas.
+# Redirige todo el tráfico al index.html para que React maneje la ruta.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# ----------------------------------------------------------
+# CACHÉ & RENDIMIENTO (Optimización para Vite)
+# ----------------------------------------------------------
+# Los archivos en /assets tienen un "hash" en el nombre, 
+# por lo que son inmutables y se pueden cachear por 1 año.
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# El index.html NUNCA se debe cachear agresivamente
+# para asegurar que los usuarios vean las actualizaciones al instante.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+    # Headers de seguridad básicos
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
